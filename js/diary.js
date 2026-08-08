@@ -117,14 +117,26 @@
   }
 
   async function findAssociatedWeight(application) {
-    const { data, error } = await client.from('weight_records')
-      .select('id,record_date,weight_kg,notes,created_at')
-      .eq('record_date', application.application_date)
-      .eq('notes', linkedWeightNote)
+    const fields = 'id,record_date,weight_kg,notes,source,application_id,created_at';
+    const linkedResult = await client.from('weight_records')
+      .select(fields)
+      .eq('application_id', application.id)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
-    return { record: data || null, error };
+    if (linkedResult.error || linkedResult.data) {
+      return { record: linkedResult.data || null, error: linkedResult.error };
+    }
+    const legacyResult = await client.from('weight_records')
+      .select(fields)
+      .eq('record_date', application.application_date)
+      .eq('notes', linkedWeightNote)
+      .eq('source', 'application')
+      .is('application_id', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return { record: legacyResult.data || null, error: legacyResult.error };
   }
 
   function fillForm(data, editing = false, initialCalculation = null, associatedWeight = null) {
@@ -436,14 +448,30 @@
     let weightError = null;
     let synchronizedWeight = null;
     const existingWeight = id ? associatedWeights.get(id) || null : null;
+    const applicationId = result.data.id;
     if (existingWeight && weightKg === null) {
-      const weightResult = await client.from('weight_records').delete().eq('id', existingWeight.id).select('id').maybeSingle();
-      weightError = weightResult.error || (weightResult.data?.id === existingWeight.id ? null : { message: 'Registro de peso não foi excluído.' });
+      if (existingWeight.application_id !== applicationId) {
+        const linkResult = await client.from('weight_records').update({
+          source: 'application',
+          application_id: applicationId
+        }).eq('id', existingWeight.id).is('application_id', null).select('id').maybeSingle();
+        weightError = linkResult.error || (linkResult.data?.id === existingWeight.id ? null : { message: 'Registro de peso legado não foi vinculado.' });
+      }
+      const weightResult = weightError ? null : await client.from('weight_records').delete()
+        .eq('id', existingWeight.id)
+        .eq('application_id', applicationId)
+        .select('id')
+        .maybeSingle();
+      if (!weightError) {
+        weightError = weightResult.error || (weightResult.data?.id === existingWeight.id ? null : { message: 'Registro de peso não foi excluído.' });
+      }
     } else if (existingWeight && weightKg !== null) {
       const weightResult = await client.from('weight_records').update({
         record_date: applicationDate,
-        weight_kg: weightKg
-      }).eq('id', existingWeight.id).select('id,record_date,weight_kg,notes,created_at').single();
+        weight_kg: weightKg,
+        source: 'application',
+        application_id: applicationId
+      }).eq('id', existingWeight.id).select('id,record_date,weight_kg,notes,source,application_id,created_at').single();
       weightError = weightResult.error;
       synchronizedWeight = weightResult.data || null;
     } else if (!existingWeight && weightKg !== null) {
@@ -451,8 +479,10 @@
         user_id: userData.user.id,
         record_date: applicationDate,
         weight_kg: weightKg,
-        notes: linkedWeightNote
-      }).select('id,record_date,weight_kg,notes,created_at').single();
+        notes: linkedWeightNote,
+        source: 'application',
+        application_id: applicationId
+      }).select('id,record_date,weight_kg,notes,source,application_id,created_at').single();
       weightError = weightResult.error;
       synchronizedWeight = weightResult.data || null;
     }
