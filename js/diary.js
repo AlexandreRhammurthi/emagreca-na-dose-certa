@@ -200,7 +200,7 @@
     appendDetail(list, 'Dose informada', `${ptNumber(record.dose_mg)} mg`);
     appendDetail(list, 'Volume calculado', `${ptNumber(record.volume_ml, 3)} mL`);
     appendDetail(list, 'Quantidade calculada', `${ptNumber(record.units)} UI`);
-    appendDetail(list, 'Seringa', `U-100 ${ptNumber(record.syringe_capacity, 0)} UI`);
+    appendDetail(list, 'Seringa', `${ptNumber(record.syringe_capacity, 0)} UI`);
     appendDetail(
       list,
       'Peso no momento da aplicação',
