@@ -9,7 +9,7 @@ function number(value, digits = 2) {
 
 function renderTicks(capacity) {
   const ticks = $('ticks');
-  ticks.innerHTML = '';
+  ticks.replaceChildren();
   const step = capacity === 100 ? 2 : 1;
   const count = capacity / step;
   for (let i = 0; i <= count; i++) {
@@ -71,12 +71,20 @@ function update() {
   $('calc-units').textContent = `${number(volume, 3)} mL × 100 = ${number(units)} UI`;
 
   const warning = $('warning');
+  const warningText = warning.querySelector('p');
+  warningText.replaceChildren();
+  const warningTitle = document.createElement('strong');
+  const lineBreak = document.createElement('br');
   if (units > capacity) {
     warning.classList.add('danger');
-    warning.querySelector('p').innerHTML = `<strong>A quantidade ultrapassa esta seringa</strong><br>${number(units)} UI excedem a capacidade de ${capacity} UI. Não divida aplicações nem troque de seringa sem orientação profissional.`;
+    warningTitle.textContent = 'A quantidade ultrapassa esta seringa';
+    warningText.append(warningTitle, lineBreak, `${number(units)} UI excedem a capacidade de ${capacity} UI. Não divida aplicações nem troque de seringa sem orientação profissional.`);
   } else {
     warning.classList.remove('danger');
-    warning.querySelector('p').innerHTML = '<strong>Confira antes de aplicar</strong><br>Use apenas seringa de insulina <b>U-100</b>. Confirme a apresentação do frasco e a dose com um profissional de saúde.';
+    warningTitle.textContent = 'Confira antes de aplicar';
+    const u100 = document.createElement('b');
+    u100.textContent = 'U-100';
+    warningText.append(warningTitle, lineBreak, 'Use apenas seringa de insulina ', u100, '. Confirme a apresentação do frasco e a dose com um profissional de saúde.');
   }
   renderTicks(capacity);
 }

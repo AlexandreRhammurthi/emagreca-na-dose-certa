@@ -15,7 +15,17 @@
         </span>
         <span>Dose Certa</span>
       </a>
-      <span class="education-pill"><span></span> Ferramenta educativa</span>
+      <div class="header-actions">
+        <span class="education-pill"><span></span> Ferramenta educativa</span>
+        <div class="auth-guest" id="auth-guest">
+          <button class="auth-link" type="button" data-auth-open="login">Entrar</button>
+          <button class="auth-button" type="button" data-auth-open="signup">Criar conta</button>
+        </div>
+        <div class="auth-user" id="auth-user" hidden>
+          <span class="user-greeting">Olá, <b id="auth-display-name"></b></span>
+          <button class="auth-link" id="auth-signout" type="button">Sair</button>
+        </div>
+      </div>
     </header>
 
     <main>
@@ -151,6 +161,85 @@
     </main>
 
     <footer><span>Dose Certa</span><p>Informação visual para escolhas mais seguras.</p><small>Não oferece diagnóstico ou prescrição médica.</small></footer>
+
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="auth-modal" id="auth-modal" hidden>
+      <div class="auth-backdrop" data-auth-close></div>
+      <section class="auth-dialog" role="dialog" aria-modal="true" aria-labelledby="auth-title" tabindex="-1">
+        <button class="auth-close" type="button" data-auth-close aria-label="Fechar janela de autenticação">×</button>
+
+        <div class="auth-brand" aria-hidden="true">
+          <span class="brand-mark"><svg viewBox="0 0 32 32"><path d="M10.2 23.2 22.9 10.5a5 5 0 0 0-7.1-7.1L3.1 16.1a5 5 0 1 0 7.1 7.1Z"/><path d="m9.5 9.7 12.8 12.8"/></svg></span>
+        </div>
+
+        <div class="auth-view" data-auth-view="login">
+          <p class="auth-eyebrow">BEM-VINDO DE VOLTA</p>
+          <h2 id="auth-title">Entre na sua conta</h2>
+          <p class="auth-subtitle">Acesse sua conta com segurança.</p>
+          <form id="login-form" novalidate>
+            <label class="auth-field" for="login-email">E-mail</label>
+            <input class="auth-input" id="login-email" name="email" type="email" autocomplete="email" required />
+            <label class="auth-field" for="login-password">Senha</label>
+            <input class="auth-input" id="login-password" name="password" type="password" autocomplete="current-password" required />
+            <button class="forgot-link" type="button" data-auth-nav="recover">Esqueci minha senha</button>
+            <div class="auth-message" id="login-message" role="status" aria-live="polite" hidden></div>
+            <button class="auth-submit" type="submit"><span>Entrar</span><span class="button-loader" aria-hidden="true"></span></button>
+          </form>
+          <p class="auth-switch">Ainda não tem conta? <button type="button" data-auth-nav="signup">Criar conta</button></p>
+        </div>
+
+        <div class="auth-view" data-auth-view="signup" hidden>
+          <p class="auth-eyebrow">COMECE AGORA</p>
+          <h2>Crie sua conta</h2>
+          <p class="auth-subtitle">Preencha seus dados para continuar.</p>
+          <form id="signup-form" novalidate>
+            <label class="auth-field" for="signup-name">Nome</label>
+            <input class="auth-input" id="signup-name" name="name" type="text" autocomplete="name" required />
+            <label class="auth-field" for="signup-email">E-mail</label>
+            <input class="auth-input" id="signup-email" name="email" type="email" autocomplete="email" required />
+            <label class="auth-field" for="signup-password">Senha</label>
+            <input class="auth-input" id="signup-password" name="password" type="password" autocomplete="new-password" minlength="6" required aria-describedby="signup-password-hint" />
+            <small class="auth-hint" id="signup-password-hint">Use pelo menos 6 caracteres.</small>
+            <label class="auth-field" for="signup-confirm">Confirmar senha</label>
+            <input class="auth-input" id="signup-confirm" name="confirm" type="password" autocomplete="new-password" minlength="6" required />
+            <div class="auth-message" id="signup-message" role="status" aria-live="polite" hidden></div>
+            <button class="auth-submit" type="submit"><span>Criar conta</span><span class="button-loader" aria-hidden="true"></span></button>
+          </form>
+          <p class="auth-switch">Já tem uma conta? <button type="button" data-auth-nav="login">Entrar</button></p>
+        </div>
+
+        <div class="auth-view" data-auth-view="recover" hidden>
+          <p class="auth-eyebrow">RECUPERAR ACESSO</p>
+          <h2>Redefina sua senha</h2>
+          <p class="auth-subtitle">Enviaremos as instruções para o seu e-mail.</p>
+          <form id="recover-form" novalidate>
+            <label class="auth-field" for="recover-email">E-mail</label>
+            <input class="auth-input" id="recover-email" name="email" type="email" autocomplete="email" required />
+            <div class="auth-message" id="recover-message" role="status" aria-live="polite" hidden></div>
+            <button class="auth-submit" type="submit"><span>Enviar instruções</span><span class="button-loader" aria-hidden="true"></span></button>
+          </form>
+          <p class="auth-switch"><button type="button" data-auth-nav="login">← Voltar para entrar</button></p>
+        </div>
+
+        <div class="auth-view" data-auth-view="update" hidden>
+          <p class="auth-eyebrow">NOVA SENHA</p>
+          <h2>Defina sua nova senha</h2>
+          <p class="auth-subtitle">Escolha uma senha segura para sua conta.</p>
+          <form id="update-password-form" novalidate>
+            <label class="auth-field" for="new-password">Nova senha</label>
+            <input class="auth-input" id="new-password" name="password" type="password" autocomplete="new-password" minlength="6" required />
+            <label class="auth-field" for="new-password-confirm">Confirmar nova senha</label>
+            <input class="auth-input" id="new-password-confirm" name="confirm" type="password" autocomplete="new-password" minlength="6" required />
+            <div class="auth-message" id="update-message" role="status" aria-live="polite" hidden></div>
+            <button class="auth-submit" type="submit"><span>Salvar nova senha</span><span class="button-loader" aria-hidden="true"></span></button>
+          </form>
+        </div>
+      </section>
+    </div>
     <script src="app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
   </body>
 </html>

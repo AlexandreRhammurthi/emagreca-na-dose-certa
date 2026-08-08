@@ -1,0 +1,26 @@
+# Dependências locais
+node_modules/
+
+# Variáveis de ambiente / credenciais locais
+.env
+.env.*
+!.env.example
+
+# Testes internos de segurança / QA
+tests/
+
+# Logs internos das sprints
+AUTH_V1.1_LOG.md
+RLS_V1_LOG.md
+RLS_TEST_RESULT.md
+DIARIO_V1_LOG.md
+
+# Logs gerais
+*.log
+
+# Windows / macOS
+Thumbs.db
+.DS_Store
+
+# Editor
+.vscode/
