@@ -260,7 +260,7 @@
             <label class="auth-field" for="login-email">E-mail</label>
             <input class="auth-input" id="login-email" name="email" type="email" autocomplete="email" required />
             <label class="auth-field" for="login-password">Senha</label>
-            <input class="auth-input" id="login-password" name="password" type="password" autocomplete="current-password" required />
+            <span class="password-field"><input class="auth-input" id="login-password" name="password" type="password" autocomplete="current-password" required /><button class="password-toggle" type="button" data-password-toggle aria-controls="login-password" aria-label="Mostrar senha" aria-pressed="false"><svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.3 3M6.2 6.3C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.7-.3 3.8-.8M9.9 9.8a3 3 0 0 0 4.3 4.3"/></svg></button></span>
             <button class="forgot-link" type="button" data-auth-nav="recover">Esqueci minha senha</button>
             <div class="auth-message" id="login-message" role="status" aria-live="polite" hidden></div>
             <button class="auth-submit" type="submit"><span>Entrar</span><span class="button-loader" aria-hidden="true"></span></button>
@@ -278,10 +278,10 @@
             <label class="auth-field" for="signup-email">E-mail</label>
             <input class="auth-input" id="signup-email" name="email" type="email" autocomplete="email" required />
             <label class="auth-field" for="signup-password">Senha</label>
-            <input class="auth-input" id="signup-password" name="password" type="password" autocomplete="new-password" minlength="6" required aria-describedby="signup-password-hint" />
+            <span class="password-field"><input class="auth-input" id="signup-password" name="password" type="password" autocomplete="new-password" minlength="6" required aria-describedby="signup-password-hint" /><button class="password-toggle" type="button" data-password-toggle aria-controls="signup-password" aria-label="Mostrar senha" aria-pressed="false"><svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.3 3M6.2 6.3C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.7-.3 3.8-.8M9.9 9.8a3 3 0 0 0 4.3 4.3"/></svg></button></span>
             <small class="auth-hint" id="signup-password-hint">Use pelo menos 6 caracteres.</small>
             <label class="auth-field" for="signup-confirm">Confirmar senha</label>
-            <input class="auth-input" id="signup-confirm" name="confirm" type="password" autocomplete="new-password" minlength="6" required />
+            <span class="password-field"><input class="auth-input" id="signup-confirm" name="confirm" type="password" autocomplete="new-password" minlength="6" required /><button class="password-toggle" type="button" data-password-toggle aria-controls="signup-confirm" aria-label="Mostrar senha" aria-pressed="false"><svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.3 3M6.2 6.3C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.7-.3 3.8-.8M9.9 9.8a3 3 0 0 0 4.3 4.3"/></svg></button></span>
             <div class="auth-message" id="signup-message" role="status" aria-live="polite" hidden></div>
             <button class="auth-submit" type="submit"><span>Criar conta</span><span class="button-loader" aria-hidden="true"></span></button>
           </form>
@@ -307,9 +307,9 @@
           <p class="auth-subtitle">Escolha uma senha segura para sua conta.</p>
           <form id="update-password-form" novalidate>
             <label class="auth-field" for="new-password">Nova senha</label>
-            <input class="auth-input" id="new-password" name="password" type="password" autocomplete="new-password" minlength="6" required />
+            <span class="password-field"><input class="auth-input" id="new-password" name="password" type="password" autocomplete="new-password" minlength="6" required /><button class="password-toggle" type="button" data-password-toggle aria-controls="new-password" aria-label="Mostrar senha" aria-pressed="false"><svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.3 3M6.2 6.3C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.7-.3 3.8-.8M9.9 9.8a3 3 0 0 0 4.3 4.3"/></svg></button></span>
             <label class="auth-field" for="new-password-confirm">Confirmar nova senha</label>
-            <input class="auth-input" id="new-password-confirm" name="confirm" type="password" autocomplete="new-password" minlength="6" required />
+            <span class="password-field"><input class="auth-input" id="new-password-confirm" name="confirm" type="password" autocomplete="new-password" minlength="6" required /><button class="password-toggle" type="button" data-password-toggle aria-controls="new-password-confirm" aria-label="Mostrar senha" aria-pressed="false"><svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg><svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18M10.6 6.1A10.7 10.7 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.3 3M6.2 6.3C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6c1.4 0 2.7-.3 3.8-.8M9.9 9.8a3 3 0 0 0 4.3 4.3"/></svg></button></span>
             <div class="auth-message" id="update-message" role="status" aria-live="polite" hidden></div>
             <button class="auth-submit" type="submit"><span>Salvar nova senha</span><span class="button-loader" aria-hidden="true"></span></button>
           </form>

@@ -66,8 +66,18 @@
     form.querySelectorAll('input').forEach((input) => { input.disabled = loading; });
   }
 
+  function resetPasswordVisibility() {
+    modal.querySelectorAll('[data-password-toggle]').forEach((button) => {
+      const input = document.getElementById(button.getAttribute('aria-controls'));
+      if (input) input.type = 'password';
+      button.setAttribute('aria-pressed', 'false');
+      button.setAttribute('aria-label', 'Mostrar senha');
+    });
+  }
+
   function showView(view) {
     clearMessages();
+    resetPasswordVisibility();
     modal.querySelectorAll('[data-auth-view]').forEach((element) => {
       element.hidden = element.dataset.authView !== view;
     });
@@ -144,6 +154,17 @@
   }
 
   window.showToast = showToast;
+
+  modal.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const input = document.getElementById(button.getAttribute('aria-controls'));
+      if (!input) return;
+      const visible = input.type === 'password';
+      input.type = visible ? 'text' : 'password';
+      button.setAttribute('aria-pressed', String(visible));
+      button.setAttribute('aria-label', visible ? 'Ocultar senha' : 'Mostrar senha');
+    });
+  });
 
   document.querySelectorAll('[data-auth-open]').forEach((button) => {
     button.addEventListener('click', () => {
