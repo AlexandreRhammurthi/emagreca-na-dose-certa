@@ -11,6 +11,7 @@ const publicFiles = Object.freeze([
   'styles.css',
   'app.js',
   'js/auth.js',
+  'js/diary.js',
   'js/supabase-config.js'
 ]);
 const forbiddenPatterns = Object.freeze([

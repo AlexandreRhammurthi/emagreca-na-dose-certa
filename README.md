@@ -15,7 +15,8 @@ O projeto usa HTML, CSS e JavaScript puro, sem framework, bundler, SSR ou servid
 ├── app.js                     # Cálculo e representação visual da seringa
 ├── js/
 │   ├── supabase-config.js     # Configuração pública e cliente único do Supabase
-│   └── auth.js                # Cadastro, sessão, login, logout e recuperação
+│   ├── auth.js                # Cadastro, sessão, login, logout e recuperação
+│   └── diary.js               # Registro e histórico de aplicações realizadas
 └── README.md
 ```
 
@@ -82,6 +83,16 @@ O header exibe **Entrar / Criar conta** sem sessão e **nome / Sair** com sessã
 
 O botão **Sair** usa `signOut` e volta a interface ao estado desautenticado. Ele não exclui conta, perfil ou qualquer registro.
 
+## Diário
+
+O simulador continua disponível sem autenticação. Depois de uma simulação válida, o botão **Salvar no meu diário** permite que uma pessoa autenticada confirme a data, revise os dados calculados e inclua uma observação opcional antes do registro.
+
+Os dados são armazenados em `public.applications` usando exclusivamente o cliente Supabase já autenticado e as políticas RLS existentes. O Diário carrega até os 50 registros mais recentes, permite visualizar detalhes, editar os campos-base e excluir uma aplicação mediante confirmação.
+
+Ao editar apresentação, dose ou seringa, volume e UI são recalculados pela mesma função pura usada pelo simulador. Campos derivados não são editados isoladamente. Datas são tratadas como datas civis no formato exigido pelo banco, sem conversão UTC.
+
+O Diário representa somente aplicações realizadas. Planejamento futuro, recorrência, calendário e notificações devem permanecer em estruturas separadas e não fazem parte de `applications`.
+
 ### Recuperação completa de senha
 
 1. O usuário informa o e-mail em **Esqueci minha senha**.
@@ -102,6 +113,7 @@ A raiz do projeto é a única fonte de verdade da aplicação:
 ├── app.js
 └── js/
     ├── auth.js
+    ├── diary.js
     └── supabase-config.js
 ```
 

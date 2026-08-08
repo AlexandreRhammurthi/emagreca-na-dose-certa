@@ -151,6 +151,11 @@
               <div><span>Conversão U-100</span><b id="calc-units">0,083 mL × 100 = 8,33 UI</b></div>
             </div>
           </details>
+
+          <div class="register-application">
+            <button class="primary-action" id="register-application" type="button">Salvar no meu diário</button>
+            <small>Registre somente depois de realizar a aplicação.</small>
+          </div>
         </section>
       </section>
 
@@ -158,11 +163,85 @@
         <span>✦</span>
         <div><h3>Segurança em primeiro lugar</h3><p>Este simulador é educativo e não substitui orientação médica, farmacêutica ou a bula do medicamento. Não altere sua dose por conta própria.</p></div>
       </section>
+
+      <section class="diary-section" id="diary-section" aria-labelledby="diary-title" hidden>
+        <div class="diary-heading">
+          <div>
+            <p class="eyebrow">ÁREA AUTENTICADA</p>
+            <h2 id="diary-title">Meu Diário</h2>
+            <p>Seu histórico de aplicações realizadas.</p>
+          </div>
+          <button class="secondary-action" id="diary-simulate" type="button">Fazer uma simulação</button>
+        </div>
+        <div class="diary-status" id="diary-status" role="status" aria-live="polite">Carregando seu diário...</div>
+        <div class="diary-list" id="diary-list"></div>
+      </section>
     </main>
 
     <footer><span>Dose Certa</span><p>Informação visual para escolhas mais seguras.</p><small>Não oferece diagnóstico ou prescrição médica.</small></footer>
 
     <div class="toast-region" id="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <div class="diary-modal" id="application-form-modal" hidden>
+      <div class="diary-backdrop" data-diary-close="form"></div>
+      <section class="diary-dialog" role="dialog" aria-modal="true" aria-labelledby="application-form-title" tabindex="-1">
+        <button class="auth-close" type="button" data-diary-close="form" aria-label="Fechar registro de aplicação">×</button>
+        <p class="auth-eyebrow">MEU DIÁRIO</p>
+        <h2 id="application-form-title">Registrar aplicação</h2>
+        <p class="auth-subtitle">Confira os dados da aplicação realizada antes de salvar.</p>
+        <form id="application-form" novalidate>
+          <input id="application-id" name="id" type="hidden" />
+          <div class="diary-form-grid">
+            <label class="auth-field">Medicamento<input class="auth-input" id="application-medicine" name="medicine" type="text" maxlength="100" required /></label>
+            <label class="auth-field">Data da aplicação<input class="auth-input" id="application-date" name="application_date" type="date" required /></label>
+            <label class="auth-field" id="application-weight-field">Peso no momento da aplicação (kg) <small class="optional-label">Opcional</small><input class="auth-input" id="application-weight" name="weight_kg" type="text" inputmode="decimal" maxlength="7" placeholder="Ex.: 92,5" /></label>
+            <label class="auth-field">Quantidade no frasco (mg)<input class="auth-input" id="application-vial-mg" name="vial_mg" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
+            <label class="auth-field">Volume do frasco (mL)<input class="auth-input" id="application-vial-ml" name="vial_ml" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
+            <label class="auth-field">Dose informada (mg)<input class="auth-input" id="application-dose-mg" name="dose_mg" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
+            <label class="auth-field">Seringa U-100 (UI)<select class="auth-input" id="application-syringe" name="syringe_capacity" required><option value="30">30 UI</option><option value="50">50 UI</option><option value="100">100 UI</option></select></label>
+          </div>
+          <div class="diary-calculated" aria-live="polite">
+            <span>Volume calculado <b id="application-volume-preview">—</b></span>
+            <span>Quantidade calculada <b id="application-units-preview">—</b></span>
+          </div>
+          <label class="auth-field" for="application-notes">Observações opcionais</label>
+          <textarea class="auth-input diary-notes" id="application-notes" name="notes" maxlength="500" rows="4" aria-describedby="application-notes-count"></textarea>
+          <small class="notes-count" id="application-notes-count">0/500</small>
+          <div class="auth-message" id="application-form-message" role="alert" hidden></div>
+          <div class="dialog-actions">
+            <button class="secondary-action" type="button" data-diary-close="form">Cancelar</button>
+            <button class="primary-action diary-submit" type="submit"><span id="application-submit-label">Registrar aplicação</span><span class="button-loader" aria-hidden="true"></span></button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="application-details-modal" hidden>
+      <div class="diary-backdrop" data-diary-close="details"></div>
+      <section class="diary-dialog" role="dialog" aria-modal="true" aria-labelledby="application-details-title" tabindex="-1">
+        <button class="auth-close" type="button" data-diary-close="details" aria-label="Fechar detalhes da aplicação">×</button>
+        <p class="auth-eyebrow">MEU DIÁRIO</p>
+        <h2 id="application-details-title">Detalhes da aplicação</h2>
+        <dl class="application-details" id="application-details"></dl>
+        <div class="dialog-actions split-actions">
+          <button class="danger-action" id="application-delete-open" type="button">Excluir</button>
+          <button class="secondary-action" id="application-edit" type="button">Editar</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="application-delete-modal" hidden>
+      <div class="diary-backdrop" data-diary-close="delete"></div>
+      <section class="diary-dialog diary-dialog-small" role="alertdialog" aria-modal="true" aria-labelledby="application-delete-title" aria-describedby="application-delete-description" tabindex="-1">
+        <h2 id="application-delete-title">Excluir esta aplicação?</h2>
+        <p id="application-delete-description">Este registro será removido do seu diário.</p>
+        <div class="auth-message" id="application-delete-message" role="alert" hidden></div>
+        <div class="dialog-actions">
+          <button class="secondary-action" type="button" data-diary-close="delete">Cancelar</button>
+          <button class="danger-action diary-delete-confirm" id="application-delete-confirm" type="button">Excluir</button>
+        </div>
+      </section>
+    </div>
 
     <div class="auth-modal" id="auth-modal" hidden>
       <div class="auth-backdrop" data-auth-close></div>
@@ -241,5 +320,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/diary.js"></script>
   </body>
 </html>
