@@ -298,11 +298,12 @@
 
   document.getElementById('auth-signout').addEventListener('click', async (event) => {
     if (!client || activeRequest) return;
+    const button = event.currentTarget;
     activeRequest = true;
-    event.currentTarget.disabled = true;
+    button.disabled = true;
     const { error } = await client.auth.signOut();
     activeRequest = false;
-    event.currentTarget.disabled = false;
+    button.disabled = false;
     if (!error) {
       renderSession(null);
       showToast('Até logo! Você saiu da sua conta com segurança.', 'success');
