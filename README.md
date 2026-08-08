@@ -91,19 +91,52 @@ O botão **Sair** usa `signOut` e volta a interface ao estado desautenticado. El
 5. O formulário valida a confirmação e chama `updateUser({ password })`.
 6. Após o sucesso, os campos são limpos e os parâmetros de recuperação são removidos da URL.
 
+## Desenvolvimento
+
+A raiz do projeto é a única fonte de verdade da aplicação:
+
+```text
+/
+├── index.html
+├── styles.css
+├── app.js
+└── js/
+    ├── auth.js
+    └── supabase-config.js
+```
+
+Gere a saída pública com:
+
+```powershell
+npm run build
+```
+
+O comando limpa e recria `public/` usando uma allowlist, verifica padrões de credenciais privilegiadas e confirma por SHA-256 que source e saída são idênticos. A pasta `public/` é um artefato de build e não deve ser versionada.
+
+**Nunca edite arquivos diretamente em `public/`.** Qualquer alteração nessa pasta será descartada no próximo build. Faça toda correção na raiz e execute novamente `npm run build`.
+
 ## Execução local
 
 Não abra o HTML diretamente por `file://`, pois os redirects de autenticação precisam de uma origem HTTP válida. Na raiz do projeto, execute:
 
 ```powershell
-python -m http.server 8000
+npm run build
+python -m http.server 8000 --directory public
 ```
 
 Acesse `http://localhost:8000` e confirme que essa origem está autorizada nas Redirect URLs do Supabase.
 
 ## Publicação
 
-Publique todo o conteúdo da raiz preservando a pasta `js/`. Para Cloudflare Workers/Pages, configure o diretório de saída como a raiz do projeto estático e não defina comando de build. Após publicar, adicione a URL final às Redirect URLs do Supabase.
+O Cloudflare publica exclusivamente o conteúdo gerado em `public/`, conforme `wrangler.jsonc`. O fluxo recomendado é:
+
+```text
+Build command: npm run build
+Deploy command: npx wrangler deploy --assets ./public/
+Root directory: /
+```
+
+Também é possível executar localmente `npm run deploy`, que sempre faz o build antes do Wrangler. Após publicar, mantenha a URL final nas Redirect URLs do Supabase.
 
 ## Regras de segurança
 

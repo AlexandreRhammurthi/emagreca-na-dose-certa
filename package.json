@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "deploy": "npm run build && wrangler deploy --assets ./public/",
     "test:rls": "node ./tests/rls/rls-test.mjs"
   },
   "dependencies": {

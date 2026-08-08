@@ -1,12 +1,13 @@
-# Dependências locais
+# DependÃªncias locais
 node_modules/
+public/
 
-# Variáveis de ambiente / credenciais locais
+# VariÃ¡veis de ambiente / credenciais locais
 .env
 .env.*
 !.env.example
 
-# Testes internos de segurança / QA
+# Testes internos de seguranÃ§a / QA
 tests/
 
 # Logs internos das sprints
@@ -14,6 +15,7 @@ AUTH_V1.1_LOG.md
 RLS_V1_LOG.md
 RLS_TEST_RESULT.md
 DIARIO_V1_LOG.md
+BUILD_V1_LOG.md
 
 # Logs gerais
 *.log
