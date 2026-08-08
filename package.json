@@ -1,0 +1,11 @@
+{
+  "name": "emagreca-na-dose-certa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:rls": "node ./tests/rls/rls-test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.100.0"
+  }
+}
