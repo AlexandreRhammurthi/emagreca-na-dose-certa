@@ -1,0 +1,37 @@
+# Dependências e ferramentas
+node_modules/
+.wrangler/
+
+# Git / configuração de desenvolvimento
+.git/
+.github/
+.gitignore
+
+# QA e testes internos
+tests/
+
+# Documentação interna
+AUTH_V1.1_LOG.md
+RLS_V1_LOG.md
+RLS_TEST_RESULT.md
+DIARIO_V1_LOG.md
+
+# Arquivos Node usados em desenvolvimento/QA
+package.json
+package-lock.json
+
+# Ambiente local
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+
+# Sistema/editor
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Wrangler config não deve ser asset público
+wrangler.json
+wrangler.jsonc
+wrangler.toml
