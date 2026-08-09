@@ -23,6 +23,7 @@
   const associatedWeights = new Map();
   const modalReturnFocus = new Map();
   const linkedWeightNote = 'Peso registrado junto à aplicação';
+  const applicationFields = 'id,application_date,medicine,vial_mg,vial_ml,dose_mg,volume_ml,units,syringe_capacity,source,calculation_version,notes,created_at,updated_at';
   let currentUser = null;
   let currentUserId = null;
   let selectedId = null;
@@ -238,6 +239,31 @@
     openModal(detailsModal, trigger);
   }
 
+  async function openApplicationById(id, trigger) {
+    if (!client || !currentUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(String(id || ''))) {
+      showToast('Não foi possível localizar esta aplicação.', 'error');
+      return;
+    }
+    if (records.has(id)) {
+      await openDetails(id, trigger);
+      return;
+    }
+    const button = trigger instanceof HTMLButtonElement ? trigger : null;
+    if (button) button.disabled = true;
+    const { data, error } = await client.from('applications')
+      .select(applicationFields)
+      .eq('id', id)
+      .maybeSingle();
+    if (button) button.disabled = false;
+    if (error || !data || data.id !== id) {
+      reportTechnicalError('falha ao localizar aplicação vinculada', error);
+      showToast(friendlyDatabaseError(error, 'Não foi possível localizar esta aplicação.'), 'error');
+      return;
+    }
+    records.set(data.id, data);
+    await openDetails(data.id, trigger);
+  }
+
   function createDiaryCard(record) {
     const article = document.createElement('article');
     article.className = 'diary-card';
@@ -282,9 +308,9 @@
     const [topMedicine, topCount] = [...medicineCounts.entries()].sort((first, second) => second[1] - first[1])[0];
     document.getElementById('diary-top-medicine').textContent = topMedicine;
     document.getElementById('diary-top-count').textContent = `${topCount} ${topCount === 1 ? 'aplicação' : 'aplicações'}`;
+    document.getElementById('diary-latest-date').textContent = formatCivilDate(latest.application_date);
     document.getElementById('diary-latest-dose').textContent = `${ptNumber(latest.dose_mg)} mg`;
     document.getElementById('diary-latest-units').textContent = `${ptNumber(latest.units)} UI`;
-    document.getElementById('diary-latest-syringe').textContent = `${ptNumber(latest.syringe_capacity, 0)} UI`;
     const activity = document.getElementById('diary-activity');
     activity.replaceChildren();
     const recentItems = items.slice(0, 5).reverse();
@@ -294,12 +320,15 @@
       const point = document.createElement('span');
       const dose = document.createElement('b');
       dose.textContent = `${ptNumber(record.dose_mg)} mg`;
-      const dot = document.createElement('i');
-      dot.setAttribute('aria-hidden', 'true');
+      const vial = document.createElement('img');
+      vial.className = 'diary-activity-vial';
+      vial.src = 'assets/icons/application-vial.png';
+      vial.alt = '';
+      vial.setAttribute('aria-hidden', 'true');
       const date = document.createElement('time');
       date.dateTime = record.application_date;
       date.textContent = formatCivilDate(record.application_date).slice(0, 5);
-      point.append(dose, dot, date);
+      point.append(dose, vial, date);
       activity.appendChild(point);
     });
     diaryDashboard.hidden = false;
@@ -338,7 +367,7 @@
     setHistoryVisible(false);
     diaryList.replaceChildren();
     const { data, error } = await client.from('applications')
-      .select('id,application_date,medicine,vial_mg,vial_ml,dose_mg,volume_ml,units,syringe_capacity,source,calculation_version,notes,created_at,updated_at')
+      .select(applicationFields)
       .order('application_date', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(50);
@@ -575,6 +604,7 @@
     }
     closeModal(formModal, false);
     await loadHistory(currentUserId);
+    document.dispatchEvent(new CustomEvent('dosecerta:applications-changed'));
     if (weightError) {
       showToast('Aplicação registrada, mas não foi possível registrar o peso.', 'error');
     } else {
@@ -599,9 +629,11 @@
     selectedId = null;
     closeModal(deleteModal, false);
     await loadHistory(currentUserId);
+    document.dispatchEvent(new CustomEvent('dosecerta:applications-changed'));
     showToast('Aplicação excluída.', 'success');
   });
 
+  window.Diary = Object.freeze({ openApplicationById });
   registerButton.disabled = !calculator?.getCurrentSimulation();
   if (!client) {
     diarySection.hidden = true;

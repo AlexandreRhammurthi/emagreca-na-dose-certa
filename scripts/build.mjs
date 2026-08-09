@@ -14,6 +14,7 @@ const publicFiles = Object.freeze([
   'js/diary.js',
   'js/weight.js',
   'js/supabase-config.js',
+  'assets/icons/application-vial.png',
   'assets/icons/weight-syringe.png',
   'assets/icons/weight-scale.png'
 ]);

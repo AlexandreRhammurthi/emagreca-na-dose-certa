@@ -172,6 +172,36 @@
       remove.addEventListener('click', () => openDeleteModal(record.id, remove));
       actions.append(edit, remove);
       article.appendChild(actions);
+    } else if (record.source === 'application') {
+      const actions = document.createElement('div');
+      actions.className = 'weight-card-actions';
+      if (record.application_id) {
+        const view = document.createElement('button');
+        view.type = 'button';
+        view.className = 'weight-action view';
+        view.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>';
+        view.title = 'Ver aplicação';
+        view.setAttribute('aria-label', `Ver aplicação de ${formatCivilDate(record.record_date)}`);
+        view.addEventListener('click', () => {
+          if (typeof window.Diary?.openApplicationById !== 'function') {
+            showToast('Não foi possível abrir a aplicação.', 'error');
+            return;
+          }
+          window.Diary.openApplicationById(record.application_id, view);
+        });
+        actions.appendChild(view);
+      } else {
+        actions.classList.add('unlinked');
+        const unlinked = document.createElement('button');
+        unlinked.type = 'button';
+        unlinked.className = 'weight-unlinked-action';
+        unlinked.disabled = true;
+        unlinked.title = 'Este registro é anterior ao vínculo automático com o Diário.';
+        unlinked.setAttribute('aria-label', 'Aplicação não vinculada. Este registro é anterior ao vínculo automático com o Diário.');
+        unlinked.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 15 6-6M7.5 12.5l-2 2a3.5 3.5 0 0 0 5 5l2-2M16.5 11.5l2-2a3.5 3.5 0 0 0-5-5l-2 2M4 4l16 16"/></svg><span>Aplicação não vinculada</span>';
+        actions.appendChild(unlinked);
+      }
+      article.appendChild(actions);
     }
     return article;
   }
@@ -565,6 +595,10 @@
     closeDeleteModal(false);
     await loadHistory(currentUserId);
     showToast('Registro de peso excluído.', 'success');
+  });
+
+  document.addEventListener('dosecerta:applications-changed', () => {
+    if (currentUserId) loadHistory(currentUserId);
   });
 
   if (!client) {

@@ -183,11 +183,11 @@
           </div>
           <div class="diary-overview-grid">
             <article class="diary-overview-card">
-              <h3>Aplicação mais recente</h3>
+              <h3>Última aplicação registrada</h3>
               <dl class="diary-latest-values">
-                <div><dt>Dose registrada</dt><dd id="diary-latest-dose">—</dd></div>
+                <div><dt>Data</dt><dd id="diary-latest-date">—</dd></div>
+                <div><dt>Dosagem registrada</dt><dd id="diary-latest-dose">—</dd></div>
                 <div><dt>Quantidade calculada</dt><dd id="diary-latest-units">—</dd></div>
-                <div><dt>Seringa</dt><dd id="diary-latest-syringe">—</dd></div>
               </dl>
               <button class="secondary-action" id="diary-latest-details" type="button">Ver detalhes</button>
             </article>
@@ -282,9 +282,13 @@
         <p class="auth-eyebrow">MEU DIÁRIO</p>
         <h2 id="application-details-title">Detalhes da aplicação</h2>
         <dl class="application-details" id="application-details"></dl>
-        <div class="dialog-actions split-actions">
-          <button class="danger-action" id="application-delete-open" type="button">Excluir</button>
-          <button class="secondary-action" id="application-edit" type="button">Editar</button>
+        <div class="dialog-actions split-actions details-icon-actions">
+          <button class="weight-action delete" id="application-delete-open" type="button" title="Excluir" aria-label="Excluir aplicação">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>
+          </button>
+          <button class="weight-action edit" id="application-edit" type="button" title="Editar" aria-label="Editar aplicação">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>
+          </button>
         </div>
       </section>
     </div>
