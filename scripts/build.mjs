@@ -12,7 +12,10 @@ const publicFiles = Object.freeze([
   'app.js',
   'js/auth.js',
   'js/diary.js',
-  'js/supabase-config.js'
+  'js/weight.js',
+  'js/supabase-config.js',
+  'assets/icons/weight-syringe.png',
+  'assets/icons/weight-scale.png'
 ]);
 const forbiddenPatterns = Object.freeze([
   { label: 'Secret Key', pattern: /sb_secret_[A-Za-z0-9._-]+/u },
@@ -50,17 +53,18 @@ async function securityCheck() {
 
 async function cleanPublicDirectory() {
   await mkdir(publicDirectory, { recursive: true });
-  const entries = await readdir(publicDirectory, { withFileTypes: true });
+  await cleanDirectoryContents(publicDirectory);
+}
+
+async function cleanDirectoryContents(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
-    const target = resolve(publicDirectory, entry.name);
-    if (entry.isDirectory() && entry.name === 'js') {
-      const jsEntries = await readdir(target, { withFileTypes: true });
-      for (const jsEntry of jsEntries) {
-        await rm(resolve(target, jsEntry.name), { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
-      }
+    const target = resolve(directory, entry.name);
+    if (entry.isDirectory()) {
+      await cleanDirectoryContents(target);
       continue;
     }
-    await rm(target, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+    await rm(target, { force: true, maxRetries: 3, retryDelay: 100 });
   }
 }
 

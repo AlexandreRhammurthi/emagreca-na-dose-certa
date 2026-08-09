@@ -23,6 +23,7 @@
         </div>
         <div class="auth-user" id="auth-user" hidden>
           <span class="user-greeting">Olá, <b id="auth-display-name"></b></span>
+          <button class="auth-link" id="weight-nav" type="button">Meu Peso</button>
           <button class="auth-link" id="auth-signout" type="button">Sair</button>
         </div>
       </div>
@@ -176,6 +177,36 @@
         <div class="diary-status" id="diary-status" role="status" aria-live="polite">Carregando seu diário...</div>
         <div class="diary-list" id="diary-list"></div>
       </section>
+
+      <section class="diary-section weight-section" id="weight-section" aria-labelledby="weight-title" hidden>
+        <div class="diary-heading">
+          <div>
+            <p class="eyebrow">ÁREA AUTENTICADA</p>
+            <h2 id="weight-title">Meu Peso</h2>
+            <p>Seu histórico de peso em um só lugar.</p>
+          </div>
+          <button class="primary-action" id="weight-register" type="button">+ Registrar peso</button>
+        </div>
+        <article class="weight-summary-card" aria-labelledby="weight-evolution-title">
+          <div class="weight-summary-heading">
+            <div>
+              <p class="eyebrow">ACOMPANHAMENTO</p>
+              <h3 id="weight-evolution-title">Evolução do peso</h3>
+              <p class="weight-evolution-subtitle">Acompanhe sua evolução de peso ao longo do tempo.</p>
+            </div>
+            <button class="secondary-action" id="weight-details-toggle" type="button" aria-controls="weight-details" aria-expanded="false">Ver detalhes</button>
+          </div>
+          <div class="weight-chart" id="weight-chart" role="region" aria-label="Gráfico de evolução do peso" aria-live="polite">
+            <p class="weight-chart-state">Carregando evolução...</p>
+          </div>
+        </article>
+        <div class="weight-details" id="weight-details" hidden>
+          <h3>Histórico de peso</h3>
+          <div class="diary-status" id="weight-status" role="status" aria-live="polite">Carregando histórico...</div>
+          <div class="weight-list" id="weight-list"></div>
+          <button class="secondary-action weight-details-close" id="weight-details-close" type="button">Fechar detalhes</button>
+        </div>
+      </section>
     </main>
 
     <footer><span>Dose Certa</span><p>Informação visual para escolhas mais seguras.</p><small>Não oferece diagnóstico ou prescrição médica.</small></footer>
@@ -240,6 +271,30 @@
           <button class="secondary-action" type="button" data-diary-close="delete">Cancelar</button>
           <button class="danger-action diary-delete-confirm" id="application-delete-confirm" type="button">Excluir</button>
         </div>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="weight-form-modal" hidden>
+      <div class="diary-backdrop" data-weight-close></div>
+      <section class="diary-dialog diary-dialog-small" role="dialog" aria-modal="true" aria-labelledby="weight-form-title" tabindex="-1">
+        <button class="auth-close" type="button" data-weight-close aria-label="Fechar registro de peso">×</button>
+        <p class="auth-eyebrow">MEU PESO</p>
+        <h2 id="weight-form-title">Registrar peso</h2>
+        <p class="auth-subtitle">Adicione uma medição ao seu histórico.</p>
+        <form id="weight-form" novalidate>
+          <label class="auth-field" for="weight-date">Data</label>
+          <input class="auth-input" id="weight-date" name="record_date" type="date" required />
+          <label class="auth-field" for="weight-value">Peso (kg)</label>
+          <input class="auth-input" id="weight-value" name="weight_kg" type="text" inputmode="decimal" maxlength="7" placeholder="Ex.: 92,5" required />
+          <label class="auth-field" for="weight-notes">Observação <small class="optional-label">Opcional</small></label>
+          <textarea class="auth-input diary-notes" id="weight-notes" name="notes" maxlength="500" rows="4" aria-describedby="weight-notes-count"></textarea>
+          <small class="notes-count" id="weight-notes-count">0/500</small>
+          <div class="auth-message" id="weight-form-message" role="alert" hidden></div>
+          <div class="dialog-actions">
+            <button class="secondary-action" type="button" data-weight-close>Cancelar</button>
+            <button class="primary-action diary-submit" type="submit"><span>Registrar peso</span><span class="button-loader" aria-hidden="true"></span></button>
+          </div>
+        </form>
       </section>
     </div>
 
@@ -321,5 +376,6 @@
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/diary.js"></script>
+    <script src="js/weight.js"></script>
   </body>
 </html>
