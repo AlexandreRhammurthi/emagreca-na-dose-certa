@@ -12,12 +12,17 @@
   const navButton = document.getElementById('weight-nav');
   const registerButton = document.getElementById('weight-register');
   const modal = document.getElementById('weight-form-modal');
+  const deleteModal = document.getElementById('weight-delete-modal');
   const form = document.getElementById('weight-form');
   const message = document.getElementById('weight-form-message');
+  const deleteMessage = document.getElementById('weight-delete-message');
   const notes = document.getElementById('weight-notes');
+  const records = new Map();
   let currentUserId = null;
   let requestInFlight = false;
   let returnFocus = null;
+  let editingId = null;
+  let deletingId = null;
 
   function todayCivil() {
     const today = new Date();
@@ -42,6 +47,14 @@
     if (!/^\d+(?:[.,]\d+)?$/u.test(normalized)) return Number.NaN;
     const weight = Number(normalized.replace(',', '.'));
     return Number.isFinite(weight) && weight > 0 ? weight : Number.NaN;
+  }
+
+  function validCivilDate(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(String(value || ''));
+    if (!match) return false;
+    const [, year, month, day] = match.map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
   }
 
   function showToast(text, type = 'info') {
@@ -74,16 +87,22 @@
     }
   }
 
-  function focusableElements() {
-    return [...modal.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled])')]
+  function focusableElements(targetModal) {
+    return [...targetModal.querySelectorAll('button:not([disabled]), input:not([disabled]), textarea:not([disabled])')]
       .filter((element) => element.offsetParent !== null);
   }
 
-  function openModal(trigger) {
+  function openModal(trigger, record = null) {
     returnFocus = trigger || document.activeElement;
+    editingId = record?.id || null;
     form.reset();
-    form.elements.record_date.value = todayCivil();
-    document.getElementById('weight-notes-count').textContent = '0/500';
+    form.elements.record_date.value = record?.record_date || todayCivil();
+    form.elements.weight_kg.value = record ? String(Number(record.weight_kg)).replace('.', ',') : '';
+    form.elements.notes.value = record?.notes || '';
+    document.getElementById('weight-form-title').textContent = record ? 'Editar peso' : 'Registrar peso';
+    document.getElementById('weight-form-subtitle').textContent = record ? 'Atualize os dados deste registro diário.' : 'Adicione uma medição ao seu histórico.';
+    document.getElementById('weight-submit-label').textContent = record ? 'Salvar alterações' : 'Registrar peso';
+    document.getElementById('weight-notes-count').textContent = `${form.elements.notes.value.length}/500`;
     setMessage();
     modal.hidden = false;
     document.body.classList.add('auth-modal-open');
@@ -93,7 +112,28 @@
   function closeModal(restoreFocus = true) {
     if (requestInFlight) return;
     modal.hidden = true;
-    document.body.classList.remove('auth-modal-open');
+    editingId = null;
+    if (deleteModal.hidden) document.body.classList.remove('auth-modal-open');
+    if (restoreFocus) returnFocus?.focus();
+  }
+
+  function openDeleteModal(id, trigger) {
+    const record = records.get(id);
+    if (!record || record.source !== 'manual' || record.application_id !== null) return;
+    deletingId = id;
+    returnFocus = trigger;
+    deleteMessage.textContent = '';
+    deleteMessage.hidden = true;
+    deleteModal.hidden = false;
+    document.body.classList.add('auth-modal-open');
+    window.requestAnimationFrame(() => document.getElementById('weight-delete-confirm').focus());
+  }
+
+  function closeDeleteModal(restoreFocus = true) {
+    if (requestInFlight) return;
+    deleteModal.hidden = true;
+    deletingId = null;
+    if (modal.hidden) document.body.classList.remove('auth-modal-open');
     if (restoreFocus) returnFocus?.focus();
   }
 
@@ -107,8 +147,32 @@
     weight.textContent = `${formatWeight(record.weight_kg)} kg`;
     const origin = document.createElement('span');
     origin.className = `weight-origin${record.source === 'application' ? ' application' : ''}`;
-    origin.textContent = record.source === 'application' ? 'Registrado na aplicação' : 'Registro manual';
+    const originIcon = document.createElement('img');
+    originIcon.src = record.source === 'application' ? 'assets/icons/weight-syringe.png' : 'assets/icons/weight-scale.png';
+    originIcon.alt = '';
+    originIcon.setAttribute('aria-hidden', 'true');
+    origin.append(originIcon, document.createTextNode(record.source === 'application' ? 'Registrado na aplicação' : 'Registro diário'));
     article.append(date, weight, origin);
+    if (record.source === 'manual' && record.application_id === null) {
+      const actions = document.createElement('div');
+      actions.className = 'weight-card-actions';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'weight-action edit';
+      edit.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.8 2.8 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg>';
+      edit.title = 'Editar';
+      edit.setAttribute('aria-label', `Editar peso de ${formatCivilDate(record.record_date)}`);
+      edit.addEventListener('click', () => openModal(edit, record));
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'weight-action delete';
+      remove.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>';
+      remove.title = 'Excluir';
+      remove.setAttribute('aria-label', `Excluir peso de ${formatCivilDate(record.record_date)}`);
+      remove.addEventListener('click', () => openDeleteModal(record.id, remove));
+      actions.append(edit, remove);
+      article.appendChild(actions);
+    }
     return article;
   }
 
@@ -322,16 +386,20 @@
     };
   }
 
-  function renderHistory(records) {
+  function renderHistory(items) {
     list.replaceChildren();
-    renderChart(records);
-    if (!records.length) {
+    records.clear();
+    renderChart(items);
+    if (!items.length) {
       status.hidden = false;
       status.textContent = 'Você ainda não registrou nenhum peso.';
       return;
     }
     status.hidden = true;
-    records.forEach((record) => list.appendChild(createCard(record)));
+    items.forEach((record) => {
+      records.set(record.id, record);
+      list.appendChild(createCard(record));
+    });
   }
 
   async function loadHistory(userId) {
@@ -358,6 +426,11 @@
     if (nextUserId === currentUserId) return;
     currentUserId = nextUserId;
     modal.hidden = true;
+    deleteModal.hidden = true;
+    editingId = null;
+    deletingId = null;
+    records.clear();
+    document.body.classList.remove('auth-modal-open');
     setDetailsVisible(false);
     section.hidden = !nextUserId;
     list.replaceChildren();
@@ -382,16 +455,21 @@
   document.querySelectorAll('[data-weight-close]').forEach((button) => {
     button.addEventListener('click', () => closeModal());
   });
+  document.querySelectorAll('[data-weight-delete-close]').forEach((button) => {
+    button.addEventListener('click', () => closeDeleteModal());
+  });
 
   document.addEventListener('keydown', (event) => {
-    if (modal.hidden) return;
+    const activeModal = !deleteModal.hidden ? deleteModal : !modal.hidden ? modal : null;
+    if (!activeModal) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      closeModal();
+      if (activeModal === deleteModal) closeDeleteModal();
+      else closeModal();
       return;
     }
     if (event.key !== 'Tab') return;
-    const focusable = focusableElements();
+    const focusable = focusableElements(activeModal);
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -405,8 +483,14 @@
     setMessage();
     const recordDate = form.elements.record_date.value;
     const weightKg = parseWeight(form.elements.weight_kg.value);
-    if (!recordDate || Number.isNaN(weightKg)) {
+    if (!validCivilDate(recordDate) || Number.isNaN(weightKg)) {
       setMessage('Informe uma data e um peso válido maior que zero.');
+      return;
+    }
+    const updating = Boolean(editingId);
+    const selectedRecord = updating ? records.get(editingId) : null;
+    if (updating && (!selectedRecord || selectedRecord.source !== 'manual' || selectedRecord.application_id !== null)) {
+      setMessage('Este registro não pode ser editado por esta tela.');
       return;
     }
     const { data: userData, error: userError } = await client.auth.getUser();
@@ -418,25 +502,69 @@
     requestInFlight = true;
     submit.disabled = true;
     submit.classList.add('is-loading');
-    const { error } = await client.from('weight_records').insert({
-      user_id: userData.user.id,
+    const payload = {
       record_date: recordDate,
       weight_kg: weightKg,
-      notes: notes.value.trim() || null,
-      source: 'manual',
-      application_id: null
-    });
+      notes: notes.value.trim() || null
+    };
+    const result = updating
+      ? await client.from('weight_records').update(payload)
+        .eq('id', editingId)
+        .eq('source', 'manual')
+        .is('application_id', null)
+        .select('id,record_date,weight_kg,notes,source,application_id,created_at')
+        .single()
+      : await client.from('weight_records').insert({
+        ...payload,
+        user_id: userData.user.id,
+        source: 'manual',
+        application_id: null
+      }).select('id,record_date,weight_kg,notes,source,application_id,created_at').single();
     requestInFlight = false;
     submit.disabled = false;
     submit.classList.remove('is-loading');
-    if (error) {
-      reportTechnicalError('falha ao registrar peso', error);
-      setMessage(friendlyError(error, 'Não foi possível registrar o peso. Tente novamente.'));
+    const invalidUpdate = updating && (result.data?.id !== editingId || result.data?.source !== 'manual' || result.data?.application_id !== null);
+    if (result.error || !result.data || invalidUpdate) {
+      reportTechnicalError(updating ? 'falha ao atualizar peso' : 'falha ao registrar peso', result.error);
+      setMessage(friendlyError(result.error, updating ? 'Não foi possível atualizar o peso. Tente novamente.' : 'Não foi possível registrar o peso. Tente novamente.'));
       return;
     }
     closeModal(false);
     await loadHistory(currentUserId);
-    showToast('Peso registrado com sucesso.', 'success');
+    showToast(updating ? 'Peso atualizado com sucesso.' : 'Peso registrado com sucesso.', 'success');
+  });
+
+  document.getElementById('weight-delete-confirm').addEventListener('click', async (event) => {
+    if (!client || requestInFlight || !deletingId) return;
+    const id = deletingId;
+    const record = records.get(id);
+    if (!record || record.source !== 'manual' || record.application_id !== null) return;
+    const { data: userData, error: userError } = await client.auth.getUser();
+    if (userError || !userData.user || userData.user.id !== currentUserId) {
+      deleteMessage.textContent = 'Sua sessão expirou. Entre novamente.';
+      deleteMessage.hidden = false;
+      return;
+    }
+    const button = event.currentTarget;
+    requestInFlight = true;
+    button.disabled = true;
+    const result = await client.from('weight_records').delete()
+      .eq('id', id)
+      .eq('source', 'manual')
+      .is('application_id', null)
+      .select('id')
+      .maybeSingle();
+    requestInFlight = false;
+    button.disabled = false;
+    if (result.error || result.data?.id !== id) {
+      reportTechnicalError('falha ao excluir peso', result.error);
+      deleteMessage.textContent = friendlyError(result.error, 'Não foi possível excluir o registro. Tente novamente.');
+      deleteMessage.hidden = false;
+      return;
+    }
+    closeDeleteModal(false);
+    await loadHistory(currentUserId);
+    showToast('Registro de peso excluído.', 'success');
   });
 
   if (!client) {

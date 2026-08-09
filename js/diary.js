@@ -7,6 +7,10 @@
   const diarySection = document.getElementById('diary-section');
   const diaryStatus = document.getElementById('diary-status');
   const diaryList = document.getElementById('diary-list');
+  const diaryDashboard = document.getElementById('diary-dashboard');
+  const diaryHistory = document.getElementById('diary-history');
+  const diaryHistoryToggle = document.getElementById('diary-history-toggle');
+  const diaryHistoryClose = document.getElementById('diary-history-close');
   const formModal = document.getElementById('application-form-modal');
   const detailsModal = document.getElementById('application-details-modal');
   const deleteModal = document.getElementById('application-delete-modal');
@@ -24,6 +28,7 @@
   let selectedId = null;
   let pendingRegistration = false;
   let requestInFlight = false;
+  let latestDashboardId = null;
 
   function ptNumber(value, digits = 2) {
     return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
@@ -34,6 +39,16 @@
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  function daysAgoCivil(days) {
+    const date = new Date();
+    date.setHours(12, 0, 0, 0);
+    date.setDate(date.getDate() - days);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
@@ -245,11 +260,59 @@
     return article;
   }
 
+  function setHistoryVisible(visible, restoreFocus = false) {
+    diaryHistory.hidden = !visible;
+    diaryHistoryToggle.setAttribute('aria-expanded', String(visible));
+    diaryHistoryToggle.querySelector('b').textContent = visible ? 'Ocultar histórico completo' : 'Ver histórico completo';
+    if (restoreFocus) {
+      diaryHistoryToggle.focus({ preventScroll: true });
+      diaryHistoryToggle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function renderDashboard(items) {
+    const latest = items[0];
+    latestDashboardId = latest.id;
+    document.getElementById('diary-last-date').textContent = formatCivilDate(latest.application_date);
+    document.getElementById('diary-last-medicine').textContent = latest.medicine;
+    const cutoff = daysAgoCivil(29);
+    document.getElementById('diary-month-count').textContent = String(items.filter((record) => record.application_date >= cutoff && record.application_date <= todayCivil()).length);
+    const medicineCounts = new Map();
+    items.forEach((record) => medicineCounts.set(record.medicine, (medicineCounts.get(record.medicine) || 0) + 1));
+    const [topMedicine, topCount] = [...medicineCounts.entries()].sort((first, second) => second[1] - first[1])[0];
+    document.getElementById('diary-top-medicine').textContent = topMedicine;
+    document.getElementById('diary-top-count').textContent = `${topCount} ${topCount === 1 ? 'aplicação' : 'aplicações'}`;
+    document.getElementById('diary-latest-dose').textContent = `${ptNumber(latest.dose_mg)} mg`;
+    document.getElementById('diary-latest-units').textContent = `${ptNumber(latest.units)} UI`;
+    document.getElementById('diary-latest-syringe').textContent = `${ptNumber(latest.syringe_capacity, 0)} UI`;
+    const activity = document.getElementById('diary-activity');
+    activity.replaceChildren();
+    const recentItems = items.slice(0, 5).reverse();
+    activity.style.gridTemplateColumns = `repeat(${recentItems.length}, minmax(0, 1fr))`;
+    activity.classList.toggle('single', recentItems.length === 1);
+    recentItems.forEach((record) => {
+      const point = document.createElement('span');
+      const dose = document.createElement('b');
+      dose.textContent = `${ptNumber(record.dose_mg)} mg`;
+      const dot = document.createElement('i');
+      dot.setAttribute('aria-hidden', 'true');
+      const date = document.createElement('time');
+      date.dateTime = record.application_date;
+      date.textContent = formatCivilDate(record.application_date).slice(0, 5);
+      point.append(dose, dot, date);
+      activity.appendChild(point);
+    });
+    diaryDashboard.hidden = false;
+  }
+
   function renderHistory(items) {
     diaryList.replaceChildren();
     records.clear();
     associatedWeights.clear();
+    latestDashboardId = null;
+    setHistoryVisible(false);
     if (!items.length) {
+      diaryDashboard.hidden = true;
       diaryStatus.hidden = false;
       diaryStatus.textContent = 'Você ainda não registrou nenhuma aplicação.';
       const button = document.createElement('button');
@@ -261,6 +324,7 @@
       return;
     }
     diaryStatus.hidden = true;
+    renderDashboard(items);
     items.forEach((record) => {
       records.set(record.id, record);
       diaryList.appendChild(createDiaryCard(record));
@@ -270,6 +334,8 @@
   async function loadHistory(userId) {
     diaryStatus.hidden = false;
     diaryStatus.textContent = 'Carregando seu diário...';
+    diaryDashboard.hidden = true;
+    setHistoryVisible(false);
     diaryList.replaceChildren();
     const { data, error } = await client.from('applications')
       .select('id,application_date,medicine,vial_mg,vial_ml,dose_mg,volume_ml,units,syringe_capacity,source,calculation_version,notes,created_at,updated_at')
@@ -291,9 +357,12 @@
     currentUser = nextUser;
     currentUserId = nextUser?.id || null;
     selectedId = null;
+    latestDashboardId = null;
     records.clear();
     associatedWeights.clear();
     diaryList.replaceChildren();
+    diaryDashboard.hidden = true;
+    setHistoryVisible(false);
     [formModal, detailsModal, deleteModal].forEach((modal) => { modal.hidden = true; });
     document.body.classList.remove('auth-modal-open');
     diarySection.hidden = !nextUser;
@@ -328,6 +397,11 @@
   });
 
   document.getElementById('diary-simulate').addEventListener('click', scrollToSimulator);
+  document.getElementById('diary-latest-details').addEventListener('click', (event) => {
+    if (latestDashboardId) openDetails(latestDashboardId, event.currentTarget);
+  });
+  diaryHistoryToggle.addEventListener('click', () => setHistoryVisible(diaryHistory.hidden));
+  diaryHistoryClose.addEventListener('click', () => setHistoryVisible(false, true));
   formFields.forEach((id) => document.getElementById(id).addEventListener('input', updateCalculationPreview));
   notes.addEventListener('input', updateNotesCount);
 

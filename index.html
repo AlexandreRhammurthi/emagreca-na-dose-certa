@@ -170,12 +170,40 @@
           <div>
             <p class="eyebrow">ÁREA AUTENTICADA</p>
             <h2 id="diary-title">Meu Diário</h2>
-            <p>Seu histórico de aplicações realizadas.</p>
+            <p>Acompanhe suas aplicações registradas.</p>
           </div>
           <button class="secondary-action" id="diary-simulate" type="button">Fazer uma simulação</button>
         </div>
         <div class="diary-status" id="diary-status" role="status" aria-live="polite">Carregando seu diário...</div>
-        <div class="diary-list" id="diary-list"></div>
+        <div class="diary-dashboard" id="diary-dashboard" hidden>
+          <div class="diary-metrics">
+            <article class="diary-metric"><span>ÚLTIMA APLICAÇÃO</span><strong id="diary-last-date">—</strong><small id="diary-last-medicine">—</small></article>
+            <article class="diary-metric"><span>APLICAÇÕES NOS ÚLTIMOS 30 DIAS</span><strong id="diary-month-count">0</strong><small>registros</small></article>
+            <article class="diary-metric"><span>MEDICAMENTO MAIS REGISTRADO</span><strong id="diary-top-medicine">—</strong><small id="diary-top-count">—</small></article>
+          </div>
+          <div class="diary-overview-grid">
+            <article class="diary-overview-card">
+              <h3>Aplicação mais recente</h3>
+              <dl class="diary-latest-values">
+                <div><dt>Dose registrada</dt><dd id="diary-latest-dose">—</dd></div>
+                <div><dt>Quantidade calculada</dt><dd id="diary-latest-units">—</dd></div>
+                <div><dt>Seringa</dt><dd id="diary-latest-syringe">—</dd></div>
+              </dl>
+              <button class="secondary-action" id="diary-latest-details" type="button">Ver detalhes</button>
+            </article>
+            <article class="diary-overview-card">
+              <h3>Histórico de aplicações</h3>
+              <div class="diary-activity" id="diary-activity" aria-label="Datas das aplicações mais recentes"></div>
+              <small>Registros realizados, sem indicação de agenda ou adesão.</small>
+            </article>
+          </div>
+          <button class="diary-history-toggle" id="diary-history-toggle" type="button" aria-controls="diary-history" aria-expanded="false"><span><b>Ver histórico completo</b><small>Consulte todas as aplicações quando precisar.</small></span><span aria-hidden="true">›</span></button>
+        </div>
+        <div class="diary-history" id="diary-history" hidden>
+          <h3>Histórico de aplicações</h3>
+          <div class="diary-list" id="diary-list"></div>
+          <button class="secondary-action diary-history-close" id="diary-history-close" type="button">Fechar histórico</button>
+        </div>
       </section>
 
       <section class="diary-section weight-section" id="weight-section" aria-labelledby="weight-title" hidden>
@@ -280,7 +308,7 @@
         <button class="auth-close" type="button" data-weight-close aria-label="Fechar registro de peso">×</button>
         <p class="auth-eyebrow">MEU PESO</p>
         <h2 id="weight-form-title">Registrar peso</h2>
-        <p class="auth-subtitle">Adicione uma medição ao seu histórico.</p>
+        <p class="auth-subtitle" id="weight-form-subtitle">Adicione uma medição ao seu histórico.</p>
         <form id="weight-form" novalidate>
           <label class="auth-field" for="weight-date">Data</label>
           <input class="auth-input" id="weight-date" name="record_date" type="date" required />
@@ -292,9 +320,22 @@
           <div class="auth-message" id="weight-form-message" role="alert" hidden></div>
           <div class="dialog-actions">
             <button class="secondary-action" type="button" data-weight-close>Cancelar</button>
-            <button class="primary-action diary-submit" type="submit"><span>Registrar peso</span><span class="button-loader" aria-hidden="true"></span></button>
+            <button class="primary-action diary-submit" type="submit"><span id="weight-submit-label">Registrar peso</span><span class="button-loader" aria-hidden="true"></span></button>
           </div>
         </form>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="weight-delete-modal" hidden>
+      <div class="diary-backdrop" data-weight-delete-close></div>
+      <section class="diary-dialog diary-dialog-small" role="alertdialog" aria-modal="true" aria-labelledby="weight-delete-title" aria-describedby="weight-delete-description" tabindex="-1">
+        <h2 id="weight-delete-title">Excluir este registro de peso?</h2>
+        <p class="auth-subtitle" id="weight-delete-description">Esta ação não poderá ser desfeita.</p>
+        <div class="auth-message" id="weight-delete-message" role="alert" hidden></div>
+        <div class="dialog-actions">
+          <button class="secondary-action" type="button" data-weight-delete-close>Cancelar</button>
+          <button class="danger-action diary-delete-confirm" id="weight-delete-confirm" type="button">Excluir registro</button>
+        </div>
       </section>
     </div>
 
