@@ -12,6 +12,7 @@
   const diaryHistoryToggle = document.getElementById('diary-history-toggle');
   const diaryHistoryClose = document.getElementById('diary-history-close');
   const formModal = document.getElementById('application-form-modal');
+  const futureModal = document.getElementById('application-future-modal');
   const detailsModal = document.getElementById('application-details-modal');
   const deleteModal = document.getElementById('application-delete-modal');
   const applicationForm = document.getElementById('application-form');
@@ -96,7 +97,7 @@
   function closeModal(modal, restoreFocus = true) {
     if (requestInFlight) return;
     modal.hidden = true;
-    if ([formModal, detailsModal, deleteModal].every((item) => item.hidden)) document.body.classList.remove('auth-modal-open');
+    if ([formModal, futureModal, detailsModal, deleteModal].every((item) => item.hidden)) document.body.classList.remove('auth-modal-open');
     if (restoreFocus) modalReturnFocus.get(modal)?.focus();
   }
 
@@ -195,6 +196,16 @@
       notes: ''
     }, false, simulation);
     openModal(formModal, trigger);
+  }
+
+  function showFutureChoice(trigger) {
+    formModal.hidden = true;
+    openModal(futureModal, trigger);
+  }
+
+  function returnToApplicationForm() {
+    closeModal(futureModal, false);
+    openModal(formModal, modalReturnFocus.get(formModal));
   }
 
   function appendDetail(list, label, value) {
@@ -392,7 +403,7 @@
     diaryList.replaceChildren();
     diaryDashboard.hidden = true;
     setHistoryVisible(false);
-    [formModal, detailsModal, deleteModal].forEach((modal) => { modal.hidden = true; });
+    [formModal, futureModal, detailsModal, deleteModal].forEach((modal) => { modal.hidden = true; });
     document.body.classList.remove('auth-modal-open');
     diarySection.hidden = !nextUser;
     if (!nextUser) {
@@ -436,17 +447,22 @@
 
   document.querySelectorAll('[data-diary-close]').forEach((button) => {
     button.addEventListener('click', () => {
+      if (button.dataset.diaryClose === 'future') {
+        returnToApplicationForm();
+        return;
+      }
       const modal = { form: formModal, details: detailsModal, delete: deleteModal }[button.dataset.diaryClose];
       closeModal(modal);
     });
   });
 
   document.addEventListener('keydown', (event) => {
-    const openDiaryModal = [deleteModal, detailsModal, formModal].find((modal) => !modal.hidden);
+    const openDiaryModal = [futureModal, deleteModal, detailsModal, formModal].find((modal) => !modal.hidden);
     if (!openDiaryModal) return;
     if (event.key === 'Escape') {
       event.preventDefault();
-      closeModal(openDiaryModal);
+      if (openDiaryModal === futureModal) returnToApplicationForm();
+      else closeModal(openDiaryModal);
       return;
     }
     if (event.key !== 'Tab') return;
@@ -488,6 +504,24 @@
     openModal(deleteModal, originalTrigger);
   });
 
+  document.getElementById('application-future-plan').addEventListener('click', (event) => {
+    const openPlan = window.PlanModule?.openCreateWithDraft;
+    if (typeof openPlan !== 'function') {
+      setInlineMessage(formMessage, 'Não foi possível abrir o Meu Plano. Tente novamente.');
+      returnToApplicationForm();
+      return;
+    }
+    const draft = {
+      medicine: applicationForm.elements.medicine.value.trim(),
+      doseMg: applicationForm.elements.dose_mg.value,
+      scheduledDate: applicationForm.elements.application_date.value,
+      notes: applicationForm.elements.notes.value.trim()
+    };
+    const returnFocus = modalReturnFocus.get(formModal);
+    closeModal(futureModal, false);
+    openPlan(draft, returnFocus || event.currentTarget);
+  });
+
   applicationForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!client || requestInFlight) return;
@@ -506,7 +540,7 @@
       return;
     }
     if (applicationDate > todayCivil()) {
-      setInlineMessage(formMessage, 'Aplicações futuras serão tratadas no Plano. Informe uma data de aplicação realizada.');
+      showFutureChoice(event.submitter || applicationForm.querySelector('[type="submit"]'));
       return;
     }
     const { data: userData, error: userError } = await client.auth.getUser();

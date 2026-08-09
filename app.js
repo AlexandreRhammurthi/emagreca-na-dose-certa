@@ -3,6 +3,24 @@ const inputs = ['vial-mg', 'vial-ml', 'dose-mg'];
 const syringeStart = 82;
 const syringeEnd = 489;
 let currentSimulation = null;
+const medicines = Object.freeze([
+  Object.freeze({ value: 'tirzepatida', label: 'Tirzepatida' }),
+  Object.freeze({ value: 'semaglutida', label: 'Semaglutida' }),
+  Object.freeze({ value: 'outro', label: 'Outro medicamento' })
+]);
+
+window.DoseMedicines = medicines;
+
+function populateMedicineSelect(select) {
+  medicines.forEach(({ value, label }) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    select.appendChild(option);
+  });
+}
+
+populateMedicineSelect($('medicine'));
 
 function calculateDose({ vialMg, vialMl, doseMg, syringeCapacity }) {
   const values = [vialMg, vialMl, doseMg, syringeCapacity].map(Number);

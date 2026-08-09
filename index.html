@@ -23,7 +23,9 @@
         </div>
         <div class="auth-user" id="auth-user" hidden>
           <span class="user-greeting">Olá, <b id="auth-display-name"></b></span>
+          <button class="auth-link" id="diary-nav" type="button">Meu Diário</button>
           <button class="auth-link" id="weight-nav" type="button">Meu Peso</button>
+          <button class="auth-link" id="plan-nav" type="button">Meu Plano</button>
           <button class="auth-link" id="auth-signout" type="button">Sair</button>
         </div>
       </div>
@@ -49,11 +51,7 @@
           <label class="field">
             <span>Medicamento</span>
             <span class="select-wrap">
-              <select id="medicine">
-                <option value="tirzepatida">Tirzepatida</option>
-                <option value="semaglutida">Semaglutida</option>
-                <option value="outro">Outro medicamento</option>
-              </select>
+              <select id="medicine"></select>
             </span>
           </label>
 
@@ -235,6 +233,40 @@
           <button class="secondary-action weight-details-close" id="weight-details-close" type="button">Fechar detalhes</button>
         </div>
       </section>
+
+      <section class="diary-section plan-section" id="plan-section" aria-labelledby="plan-title" hidden>
+        <div class="diary-heading plan-heading">
+          <div>
+            <p class="eyebrow">ÁREA AUTENTICADA</p>
+            <h2 id="plan-title">Meu Plano</h2>
+            <p>Organize suas próximas aplicações.</p>
+          </div>
+        </div>
+        <div class="diary-status" id="plan-status" role="status" aria-live="polite">Carregando seu plano...</div>
+        <div class="plan-content" id="plan-content" hidden>
+          <article class="plan-next-card" id="plan-next-card" aria-labelledby="plan-next-title">
+            <p class="eyebrow">PRÓXIMO LEMBRETE</p>
+            <h3 id="plan-next-title">Próxima aplicação</h3>
+            <div id="plan-next-content"></div>
+          </article>
+          <button class="primary-action plan-register" id="plan-register" type="button">+ Agendar aplicação</button>
+          <section class="plan-upcoming" aria-labelledby="plan-upcoming-title">
+            <h3 id="plan-upcoming-title">Próximas aplicações</h3>
+            <div class="plan-list" id="plan-list"></div>
+          </section>
+          <button class="secondary-action plan-calendar-toggle" id="plan-calendar-toggle" type="button" aria-controls="plan-calendar" aria-expanded="false">Ver calendário</button>
+          <section class="plan-calendar" id="plan-calendar" aria-labelledby="plan-calendar-title">
+            <div class="plan-calendar-heading">
+              <button type="button" id="plan-calendar-prev" aria-label="Mês anterior">‹</button>
+              <h3 id="plan-calendar-title">Calendário</h3>
+              <button type="button" id="plan-calendar-next" aria-label="Próximo mês">›</button>
+            </div>
+            <div class="plan-calendar-weekdays" aria-hidden="true"><span>DOM</span><span>SEG</span><span>TER</span><span>QUA</span><span>QUI</span><span>SEX</span><span>SÁB</span></div>
+            <div class="plan-calendar-grid" id="plan-calendar-grid" role="grid" aria-labelledby="plan-calendar-title"></div>
+            <div class="plan-calendar-day-details" id="plan-calendar-day-details" aria-live="polite"></div>
+          </section>
+        </div>
+      </section>
     </main>
 
     <footer><span>Dose Certa</span><p>Informação visual para escolhas mais seguras.</p><small>Não oferece diagnóstico ou prescrição médica.</small></footer>
@@ -272,6 +304,18 @@
             <button class="primary-action diary-submit" type="submit"><span id="application-submit-label">Registrar aplicação</span><span class="button-loader" aria-hidden="true"></span></button>
           </div>
         </form>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="application-future-modal" hidden>
+      <div class="diary-backdrop" data-diary-close="future"></div>
+      <section class="diary-dialog diary-dialog-small" role="alertdialog" aria-modal="true" aria-labelledby="application-future-title" aria-describedby="application-future-description" tabindex="-1">
+        <h2 id="application-future-title">Esta aplicação está programada para uma data futura.</h2>
+        <p class="auth-subtitle" id="application-future-description">Você quer adicioná-la ao Meu Plano?</p>
+        <div class="dialog-actions">
+          <button class="secondary-action" type="button" data-diary-close="future">Cancelar</button>
+          <button class="primary-action" id="application-future-plan" type="button">Agendar no Meu Plano</button>
+        </div>
       </section>
     </div>
 
@@ -339,6 +383,54 @@
         <div class="dialog-actions">
           <button class="secondary-action" type="button" data-weight-delete-close>Cancelar</button>
           <button class="danger-action diary-delete-confirm" id="weight-delete-confirm" type="button">Excluir registro</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="plan-form-modal" hidden>
+      <div class="diary-backdrop" data-plan-close="form"></div>
+      <section class="diary-dialog" role="dialog" aria-modal="true" aria-labelledby="plan-form-title" tabindex="-1">
+        <button class="auth-close" type="button" data-plan-close="form" aria-label="Fechar agendamento">×</button>
+        <p class="auth-eyebrow">MEU PLANO</p>
+        <h2 id="plan-form-title">Agendar aplicação</h2>
+        <p class="auth-subtitle" id="plan-form-subtitle">Defina quando deseja receber o lembrete.</p>
+        <form id="plan-form" novalidate>
+          <input name="occurrence_id" type="hidden" />
+          <div class="diary-form-grid">
+            <label class="auth-field plan-create-only">Medicamento<select class="auth-input" name="medicine" required></select></label>
+            <label class="auth-field plan-create-only">Dose planejada (mg)<input class="auth-input" name="dose_mg" type="text" inputmode="decimal" maxlength="12" placeholder="Ex.: 2,5" required /></label>
+            <label class="auth-field"><span id="plan-date-label">Data inicial</span><input class="auth-input" name="scheduled_date" type="date" required /></label>
+            <label class="auth-field">Horário<input class="auth-input" name="scheduled_time" type="time" required /></label>
+            <label class="auth-field plan-create-only">Frequência<select class="auth-input" name="frequency_choice" required><option value="once">Uma única aplicação</option><option value="weekly">A cada 7 dias</option><option value="custom">Personalizado</option></select></label>
+            <label class="auth-field plan-create-only" id="plan-interval-field" for="plan-frequency-interval">Intervalo em dias<input class="auth-input" id="plan-frequency-interval" name="frequency_interval" type="number" min="1" max="365" step="1" inputmode="numeric" aria-describedby="plan-interval-hint" disabled /><small class="plan-interval-hint" id="plan-interval-hint">Não se aplica a uma única aplicação.</small></label>
+          </div>
+          <fieldset class="plan-reminders">
+            <legend>Lembretes</legend>
+            <label><input name="reminders" type="checkbox" value="1440" checked /><span>1 dia antes</span></label>
+            <label><input name="reminders" type="checkbox" value="120" checked /><span>2 horas antes</span></label>
+            <label><input name="reminders" type="checkbox" value="0" checked /><span>No horário</span></label>
+          </fieldset>
+          <label class="auth-field" for="plan-notes">Observação opcional</label>
+          <textarea class="auth-input diary-notes" id="plan-notes" name="notes" maxlength="500" rows="4"></textarea>
+          <div class="auth-message" id="plan-form-message" role="alert" hidden></div>
+          <div class="dialog-actions">
+            <button class="secondary-action" type="button" data-plan-close="form">Cancelar</button>
+            <button class="primary-action diary-submit" type="submit"><span id="plan-submit-label">Agendar aplicação</span><span class="button-loader" aria-hidden="true"></span></button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="plan-cancel-modal" hidden>
+      <div class="diary-backdrop" data-plan-close="cancel"></div>
+      <section class="diary-dialog diary-dialog-small" role="alertdialog" aria-modal="true" aria-labelledby="plan-cancel-title" aria-describedby="plan-cancel-description" tabindex="-1">
+        <button class="auth-close" type="button" data-plan-close="cancel" aria-label="Fechar confirmação de cancelamento">×</button>
+        <h2 id="plan-cancel-title">Cancelar esta aplicação agendada?</h2>
+        <p class="auth-subtitle" id="plan-cancel-description">Ela deixará de aparecer entre as próximas aplicações.</p>
+        <div class="auth-message" id="plan-cancel-message" role="alert" hidden></div>
+        <div class="dialog-actions">
+          <button class="secondary-action" type="button" data-plan-close="cancel">Voltar</button>
+          <button class="danger-action diary-delete-confirm" id="plan-cancel-confirm" type="button">Cancelar aplicação</button>
         </div>
       </section>
     </div>
@@ -422,5 +514,6 @@
     <script src="js/auth.js"></script>
     <script src="js/diary.js"></script>
     <script src="js/weight.js"></script>
+    <script src="js/plan.js"></script>
   </body>
 </html>
