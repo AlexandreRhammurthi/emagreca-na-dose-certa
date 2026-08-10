@@ -31,6 +31,8 @@
   let pendingRegistration = false;
   let requestInFlight = false;
   let latestDashboardId = null;
+  let formMode = 'normal';
+  let scheduledConfirmation = null;
 
   function ptNumber(value, digits = 2) {
     return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
@@ -69,6 +71,15 @@
     return fallback;
   }
 
+  function friendlyConfirmationError(error) {
+    const text = String(error?.message || '').toLowerCase();
+    if (text.includes('authentication required') || text.includes('jwt') || text.includes('session')) return 'Sua sessão expirou. Entre novamente.';
+    if (text.includes('scheduled application not found')) return 'Esta aplicação agendada não está mais disponível.';
+    if (text.includes('not available for confirmation')) return 'Esta aplicação não pode mais ser confirmada.';
+    if (text.includes('application date')) return 'Informe uma data de aplicação atual ou passada.';
+    return friendlyDatabaseError(error, 'Não foi possível confirmar esta aplicação. Tente novamente.');
+  }
+
   function reportTechnicalError(context, error) {
     console.error(`Diário: ${context}`, { code: error?.code || 'unknown', message: error?.message || 'unknown' });
   }
@@ -97,8 +108,18 @@
   function closeModal(modal, restoreFocus = true) {
     if (requestInFlight) return;
     modal.hidden = true;
+    if (modal === formModal) resetScheduledConfirmation();
     if ([formModal, futureModal, detailsModal, deleteModal].every((item) => item.hidden)) document.body.classList.remove('auth-modal-open');
     if (restoreFocus) modalReturnFocus.get(modal)?.focus();
+  }
+
+  function resetScheduledConfirmation() {
+    formMode = 'normal';
+    scheduledConfirmation = null;
+    applicationForm.elements.medicine.readOnly = false;
+    applicationForm.elements.dose_mg.readOnly = false;
+    applicationForm.elements.application_date.removeAttribute('max');
+    document.getElementById('application-form-subtitle').textContent = 'Confira os dados da aplicação realizada antes de salvar.';
   }
 
   function calculationFromForm() {
@@ -157,6 +178,7 @@
   }
 
   function fillForm(data, editing = false, initialCalculation = null, associatedWeight = null) {
+    resetScheduledConfirmation();
     applicationForm.reset();
     applicationForm.elements.id.value = editing ? data.id : '';
     applicationForm.elements.medicine.value = data.medicine;
@@ -195,6 +217,37 @@
       application_date: todayCivil(),
       notes: ''
     }, false, simulation);
+    openModal(formModal, trigger);
+  }
+
+  function openScheduledConfirmation(data, trigger) {
+    const occurrenceId = String(data?.occurrenceId || '');
+    const doseMg = Number(data?.doseMg);
+    if (!currentUserId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(occurrenceId)
+      || !String(data?.medicine || '').trim() || !Number.isFinite(doseMg) || doseMg <= 0 || !/^\d{4}-\d{2}-\d{2}$/u.test(String(data?.scheduledDate || ''))) {
+      showToast('Não foi possível preparar esta aplicação para confirmação.', 'error');
+      return;
+    }
+    fillForm({
+      medicine: String(data.medicine).trim(),
+      vial_mg: '',
+      vial_ml: '',
+      dose_mg: doseMg,
+      syringe_capacity: 50,
+      application_date: data.scheduledDate,
+      notes: String(data.notes || '')
+    });
+    formMode = 'scheduled-confirmation';
+    scheduledConfirmation = { occurrenceId };
+    applicationForm.elements.medicine.readOnly = true;
+    applicationForm.elements.dose_mg.readOnly = true;
+    applicationForm.elements.application_date.max = todayCivil();
+    document.getElementById('application-form-title').textContent = 'Confirmar aplicação';
+    document.getElementById('application-form-subtitle').textContent = 'Confira os dados da aplicação realizada antes de registrar.';
+    document.getElementById('application-submit-label').textContent = 'Confirmar aplicação';
+    if (data.scheduledDate > todayCivil()) {
+      setInlineMessage(formMessage, 'Esta aplicação está agendada para uma data futura. Informe hoje ou uma data passada como data real.');
+    }
     openModal(formModal, trigger);
   }
 
@@ -400,6 +453,7 @@
     latestDashboardId = null;
     records.clear();
     associatedWeights.clear();
+    resetScheduledConfirmation();
     diaryList.replaceChildren();
     diaryDashboard.hidden = true;
     setHistoryVisible(false);
@@ -540,7 +594,61 @@
       return;
     }
     if (applicationDate > todayCivil()) {
-      showFutureChoice(event.submitter || applicationForm.querySelector('[type="submit"]'));
+      if (formMode === 'scheduled-confirmation') setInlineMessage(formMessage, 'A data real da aplicação não pode ser futura.');
+      else showFutureChoice(event.submitter || applicationForm.querySelector('[type="submit"]'));
+      return;
+    }
+    if (formMode === 'scheduled-confirmation') {
+      const occurrenceId = scheduledConfirmation?.occurrenceId;
+      if (!occurrenceId) {
+        console.error('[Diary Confirmation] UUID da ocorrência ausente.');
+        setInlineMessage(formMessage, 'Não foi possível identificar esta aplicação agendada. Feche a janela e tente novamente.');
+        return;
+      }
+      const submit = applicationForm.querySelector('[type="submit"]');
+      const submitLabel = document.getElementById('application-submit-label');
+      requestInFlight = true;
+      submit.disabled = true;
+      submit.classList.add('is-loading');
+      submit.setAttribute('aria-busy', 'true');
+      submitLabel.textContent = 'Confirmando...';
+      let rpcResult;
+      try {
+        rpcResult = await client.rpc('confirm_scheduled_application', {
+          p_scheduled_application_id: occurrenceId,
+          p_application_date: applicationDate,
+          p_vial_mg: calculation.vialMg,
+          p_vial_ml: calculation.vialMl,
+          p_syringe_capacity: calculation.syringeCapacity,
+          p_weight_kg: weightKg,
+          p_application_notes: applicationForm.elements.notes.value.trim()
+        });
+      } catch (error) {
+        rpcResult = { data: null, error };
+      }
+      requestInFlight = false;
+      submit.disabled = false;
+      submit.classList.remove('is-loading');
+      submit.removeAttribute('aria-busy');
+      submitLabel.textContent = 'Confirmar aplicação';
+      const confirmed = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data;
+      if (rpcResult.error || !confirmed?.application_id) {
+        console.error('[Diary Confirmation] falha na RPC.', rpcResult.error || { data: rpcResult.data });
+        setInlineMessage(formMessage, friendlyConfirmationError(rpcResult.error));
+        return;
+      }
+      const alreadyCompleted = confirmed.already_completed === true;
+      closeModal(formModal, false);
+      await loadHistory(currentUserId);
+      document.dispatchEvent(new CustomEvent('dosecerta:applications-changed'));
+      document.dispatchEvent(new CustomEvent('dosecerta:application-confirmed', {
+        detail: {
+          applicationId: confirmed.application_id,
+          weightRecordId: confirmed.weight_record_id || null,
+          alreadyCompleted
+        }
+      }));
+      showToast(alreadyCompleted ? 'Esta aplicação já havia sido confirmada.' : 'Aplicação confirmada e registrada no Diário.', 'success');
       return;
     }
     const { data: userData, error: userError } = await client.auth.getUser();
@@ -667,7 +775,7 @@
     showToast('Aplicação excluída.', 'success');
   });
 
-  window.Diary = Object.freeze({ openApplicationById });
+  window.Diary = Object.freeze({ openApplicationById, openScheduledConfirmation });
   registerButton.disabled = !calculator?.getCurrentSimulation();
   if (!client) {
     diarySection.hidden = true;

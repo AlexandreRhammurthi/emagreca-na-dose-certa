@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
 
+.auth-input[readonly]{background:#f3f6f5;color:#47635f;cursor:default}.plan-confirm-action{white-space:nowrap}
+@media(max-width:620px){.plan-item-actions{flex-wrap:wrap}.plan-item-actions .plan-confirm-action{flex:1 0 100%}}
+
 .diary-form-grid .plan-create-only{position:relative;align-content:start}.diary-form-grid .plan-create-only .auth-input{height:47px;min-height:47px}.plan-interval-hint{position:absolute;top:100%;left:0;display:block;margin-top:3px;color:var(--muted);font-size:10px;font-weight:500;line-height:1.4}.plan-create-only.is-disabled .auth-input{border-style:dashed;background:#f3f6f5;cursor:not-allowed}.plan-create-only.is-disabled .plan-interval-hint::before{content:"✓ ";font-weight:800;color:var(--teal)}
 
 :root{--ink:#173e3b;--muted:#667a77;--teal:#18aa91;--mint:#e9f7f3;--cream:#f6f5ef;--coral:#ef7b5d;--line:#dce5e1;--white:#fff;--shadow:0 18px 55px rgba(25,62,59,.09)}

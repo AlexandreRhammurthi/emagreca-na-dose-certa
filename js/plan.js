@@ -326,6 +326,24 @@
     information.append(medicine, dose);
     const actions = document.createElement('div');
     actions.className = 'plan-item-actions';
+    const confirm = document.createElement('button');
+    confirm.type = 'button';
+    confirm.className = 'primary-action plan-confirm-action';
+    confirm.textContent = 'Confirmar aplicação';
+    confirm.addEventListener('click', () => {
+      const plan = planFor(record);
+      if (!plan || typeof window.Diary?.openScheduledConfirmation !== 'function') {
+        showToast('Não foi possível abrir a confirmação desta aplicação.', 'error');
+        return;
+      }
+      window.Diary.openScheduledConfirmation({
+        occurrenceId: record.id,
+        medicine: plan.medicine,
+        doseMg: plan.dose_mg,
+        scheduledDate: record.scheduled_date,
+        notes: record.notes || ''
+      }, confirm);
+    });
     const edit = document.createElement('button');
     edit.type = 'button';
     edit.className = 'secondary-action';
@@ -336,7 +354,7 @@
     cancel.className = 'plan-cancel-action';
     cancel.textContent = 'Cancelar';
     cancel.addEventListener('click', () => openCancel(record, cancel));
-    actions.append(edit, cancel);
+    actions.append(confirm, edit, cancel);
     article.append(date, information, actions);
     return article;
   }
@@ -723,6 +741,10 @@
     closeModal(cancelModal, false);
     await loadData(currentUserId);
     showToast('Aplicação agendada cancelada.', 'success');
+  });
+
+  document.addEventListener('dosecerta:application-confirmed', () => {
+    if (currentUserId) loadData(currentUserId);
   });
 
   window.PlanModule = Object.freeze({ addCivilDays, generateOccurrenceDates, openCreateWithDraft });
