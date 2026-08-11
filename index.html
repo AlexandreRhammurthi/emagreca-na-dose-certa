@@ -243,6 +243,19 @@
           </div>
         </div>
         <div class="diary-status" id="plan-status" role="status" aria-live="polite">Carregando seu plano...</div>
+        <article class="google-calendar-card" id="google-calendar-card" aria-labelledby="google-calendar-title" hidden>
+          <span class="google-calendar-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+          </span>
+          <div class="google-calendar-copy">
+            <h3 id="google-calendar-title">Google Agenda</h3>
+            <p>Receba suas aplicações planejadas também no Google Agenda.</p>
+            <p class="google-calendar-status" id="google-calendar-status" role="status" aria-live="polite">Verificando conexão...</p>
+            <p class="google-calendar-account" id="google-calendar-account" hidden></p>
+            <p class="google-calendar-message" id="google-calendar-message" hidden></p>
+          </div>
+          <button class="secondary-action google-calendar-action" id="google-calendar-action" type="button" aria-busy="false">Conectar Google Agenda</button>
+        </article>
         <div class="plan-content" id="plan-content" hidden>
           <article class="plan-next-card" id="plan-next-card" aria-labelledby="plan-next-title">
             <p class="eyebrow">PRÓXIMO LEMBRETE</p>
@@ -515,5 +528,6 @@
     <script src="js/diary.js"></script>
     <script src="js/weight.js"></script>
     <script src="js/plan.js"></script>
+    <script type="module" src="js/google-calendar.js"></script>
   </body>
 </html>

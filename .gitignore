@@ -1,6 +1,8 @@
 # Dependências locais
 node_modules/
 public/
+supabase/.temp/
+supabase/.temp_backup_*/
 
 # Variáveis de ambiente / credenciais locais
 .env
