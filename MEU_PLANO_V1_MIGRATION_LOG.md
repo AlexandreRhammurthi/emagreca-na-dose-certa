@@ -872,3 +872,101 @@ Somente remover a função se essa consulta retornar zero linhas após o DROP da
 - `npm run build`: SUCCESS, 12/12 arquivos source/public sincronizados.
 - Callback, banco, RLS, disconnect, sync e eventos Google: não alterados.
 - Deploy, commit e push: não executados.
+
+## 25. Etapa 5.3B.1 — motor Google Calendar Sync (12/08/2026)
+
+### Arquitetura e contrato
+
+- Criada a Edge Function `google-calendar-sync` para sincronizar uma única `scheduled_application` por chamada.
+- Contrato estrito: `POST`/`OPTIONS` e corpo contendo exclusivamente `occurrence_id`; campos adicionais, UUID inválido e demais métodos são bloqueados.
+- `verify_jwt = true` foi registrado em `supabase/config.toml`; OAuth start permanece `true` e callback permanece `false`.
+- A função não foi integrada ao frontend e não executa sincronização automática ou de plano inteiro.
+
+### Autenticação e ownership
+
+- O JWT é validado novamente por `supabase.auth.getUser(jwt)`, seguindo o padrão seguro de `google-oauth-start`; não há decodificação manual.
+- `user_id` é derivado somente do JWT e não é aceito no payload.
+- A ocorrência é consultada por `occurrence_id + user_id`, com join do plano por `plan_id + mesmo user_id`.
+- Registro ausente e registro de outro usuário produzem o mesmo `404 NOT_FOUND`.
+- Somente `status = scheduled` é aceito. `completed`, `cancelled` e `missed` não chamam o Google nem alteram o registro.
+
+### Credencial, token e payload
+
+- A credential é obtida exclusivamente de `private.google_calendar_credentials` pelo par `connection_id + user_id`.
+- O refresh token é descriptografado em memória com AES-256-GCM, nonce de 12 bytes e `encryption_key_version = 1`.
+- O access token é solicitado server-side com client ID/secret e permanece somente em memória.
+- O evento envia apenas título, início, fim, timezone e lembretes. Notes, peso, volume, UI, seringa, IDs internos e dados de profile não são enviados.
+- Título canônico: `Aplicação — {medicamento} {dose formatada} mg`.
+
+### Identidade, timezone e lembretes
+
+- O ID determinístico é formado pelo prefixo `dc` e SHA-256 do UUID codificado em base32hex minúsculo, sem hífens e apenas com caracteres `0-9`/`a-v`.
+- Data e horário civis são montados sem depender da timezone do servidor; `start.timeZone` e `end.timeZone` preservam a timezone IANA da ocorrência.
+- Duração fixa de 15 minutos, incluindo rollover validado de `23:55` para `00:10` do dia seguinte.
+- Até cinco lembretes popup, cada um entre 0 e 40320 minutos; valores incompatíveis não são truncados e resultam em `invalid_google_reminder`/status `error`.
+
+### Idempotência e erros
+
+- Fluxo de status: `pending` antes da chamada, `synced` após confirmação no Google e no banco, `error` em falhas e `not_connected` sem conexão válida.
+- A primeira tentativa usa `events.insert` com ID determinístico. Conflito HTTP 409 usa `events.update` no mesmo ID; retries não criam outro evento.
+- Falhas preservam plano, ocorrência, dados clínicos e eventual `google_event_id` já existente.
+- `invalid_grant` marca a conexão como `expired`, grava somente `invalid_grant` em `last_error_code`, marca a ocorrência como `error` e não apaga a credential.
+- Sucesso atualiza apenas `last_sync_at` e limpa `last_error_code`, sem alterar account hint ou subject hash.
+- Respostas e logs não contêm access token, refresh token, Client Secret, calendar ID, event ID ou metadata privada.
+
+### Testes, regressão e segurança
+
+- Matriz isolada A–AG: PASS em 23 testes, sem credenciais reais e sem chamadas Google reais.
+- Cobertos: JWT, ownership, todos os status V1, conexão/credential, AES e nonce, decrypt, `invalid_grant`, event ID, tempo civil, timezone, payload, reminders, CREATE, retry UPDATE, erro externo e ausência de secrets em resposta/log.
+- Regressão `google-oauth-start`: PASS.
+- Regressão `google-oauth-callback`: PASS.
+- Regressão frontend Google Calendar: PASS.
+- Configuração confirmada: start `verify_jwt = true`, callback `verify_jwt = false`, sync `verify_jwt = true`.
+- `node --check` do core e dos testes aplicáveis: PASS.
+- `npm run build`: SUCCESS, 12/12 arquivos source/public sincronizados.
+- Security scan: nenhuma credencial real hardcoded, nenhum secret no bundle e nenhum acesso do browser ao schema `private`.
+- Banco, RLS, migrations, OAuth start/callback e frontend servido: não alterados.
+- Evento real, deploy, commit e push: não executados.
+
+## 26. Hotfix 5.3B.1.1 — consistência pós-Google e concorrência de status (12/08/2026)
+
+### Causa e janela de inconsistência
+
+- A versão inicial validava `status = scheduled` antes da chamada Google e repetia esse filtro ao persistir `synced`.
+- Se a ocorrência mudasse para `cancelled`, `completed` ou `missed` durante a chamada externa, o Google poderia já ter criado/atualizado o evento, mas a atualização local não preservaria sua identidade.
+- Falha da persistência pós-Google também era tratada como falha local genérica, sem distinção suficiente da falha externa.
+- A atualização de `last_sync_at` participava do caminho crítico mesmo depois de a ocorrência estar confirmada como `synced`.
+
+### Finalização explícita e concorrência
+
+- Criada `finalizeOccurrenceSync`, separada das transições locais anteriores à chamada Google.
+- A finalização localiza por `occurrence_id + user_id` e executa uma atualização atômica que sempre persiste `google_calendar_id` e `google_event_id` após sucesso externo confirmado.
+- O status atual é avaliado dentro da própria atualização, reduzindo a janela entre leitura e escrita.
+- Se continuar `scheduled`, a ocorrência recebe `google_sync_status = synced`.
+- Se tiver mudado, o novo status é preservado, os IDs remotos permanecem registrados, `google_sync_status = error` e a resposta usa a categoria sanitizada `OCCURRENCE_CHANGED_DURING_SYNC`.
+- A função nunca restaura `scheduled` e não implementa cancelamento, conclusão ou exclusão no Google nesta etapa.
+
+### Falhas e recuperação
+
+- Falha Google continua categorizada como `GOOGLE_CALENDAR_REQUEST_FAILED` e não executa finalização de sucesso.
+- Google confirmado com falha de persistência local retorna `POST_GOOGLE_PERSISTENCE_FAILED`, sem declarar sucesso falso.
+- O retorno interno `created`/`updated` de `upsertGoogleEvent` é capturado exclusivamente para diagnóstico sanitizado e recovery; IDs e tokens não entram em respostas ou logs.
+- O ID determinístico mantém o recovery idempotente: após falha local, o retry tenta INSERT com o mesmo ID, recebe 409 e atualiza o mesmo evento.
+- `markConnectionSynced` passou a confirmar que uma linha foi atualizada. Qualquer falha após a ocorrência estar `synced` é best-effort, gera somente `connection_sync_metadata_failed` e mantém resposta HTTP 200.
+
+### Testes AH–AN, regressões e segurança
+
+- AH — CREATE com occurrence ainda scheduled: PASS, finalização `synced`.
+- AI — mudança concorrente para cancelled: PASS, status preservado, IDs remotos preservados e sync `error`.
+- AJ — mudança concorrente para completed: PASS, status preservado, IDs remotos preservados e sync `error`.
+- AK — falha da persistência final: PASS, resposta segura e nenhum sucesso falso.
+- AL — retry pós-falha local: PASS com sequência Google simulada `POST 200 → POST 409 → PUT 200`, mesmo event ID e sem duplicidade.
+- AM — falha de `markConnectionSynced`: PASS, HTTP 200 e ocorrência permanece `synced`.
+- AN — resposta/log sem access token, refresh token, Client Secret, calendar ID ou event ID: PASS.
+- Matriz anterior A–AG: PASS.
+- Regressões OAuth start, OAuth callback e frontend Google Calendar: PASS.
+- `node --check`: PASS.
+- `git diff --check`: PASS.
+- `npm run build`: SUCCESS, 12/12 arquivos source/public sincronizados.
+- Security scan: nenhuma credencial real, token, segredo ou identidade remota exposta.
+- Schema, migration, RLS, OAuth start/callback, frontend, deploy, commit e push: não alterados/executados.
