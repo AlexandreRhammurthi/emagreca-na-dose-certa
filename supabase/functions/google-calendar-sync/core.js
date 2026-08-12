@@ -98,11 +98,21 @@ export function buildGoogleEvent(occurrence) {
   }
   const start = addMinutesCivil(occurrence.scheduledDate, occurrence.scheduledTime, 0);
   const end = addMinutesCivil(occurrence.scheduledDate, occurrence.scheduledTime, EVENT_DURATION_MINUTES);
+  const summaries = {
+    scheduled: 'Aplicação',
+    completed: 'Aplicação realizada',
+    missed: 'Aplicação não realizada'
+  };
+  const summaryPrefix = summaries[occurrence.status];
+  if (!summaryPrefix) throw new Error('invalid_event_status');
+  const reminders = occurrence.status === 'scheduled'
+    ? googleReminders(occurrence.reminderMinutes)
+    : [];
   return {
-    summary: `Aplicação — ${String(occurrence.medicine).trim()} ${formatDose(occurrence.doseMg)} mg`,
+    summary: `${summaryPrefix} — ${String(occurrence.medicine).trim()} ${formatDose(occurrence.doseMg)} mg`,
     start: { dateTime: start.dateTime, timeZone: occurrence.timezone },
     end: { dateTime: end.dateTime, timeZone: occurrence.timezone },
-    reminders: { useDefault: false, overrides: googleReminders(occurrence.reminderMinutes) }
+    reminders: { useDefault: false, overrides: reminders }
   };
 }
 
@@ -219,6 +229,71 @@ export async function upsertGoogleCalendarEvent({
   throw error;
 }
 
+function googleCalendarRequestError(status) {
+  const error = new Error('google_calendar_request_failed');
+  error.category = error.message;
+  error.httpStatus = status;
+  return error;
+}
+
+export async function syncTerminalGoogleCalendarEvent({
+  accessToken,
+  calendarId,
+  eventId,
+  event,
+  eventWasPersisted,
+  fetchImpl = fetch
+}) {
+  const collectionUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+  const itemUrl = `${collectionUrl}/${encodeURIComponent(eventId)}`;
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json; charset=utf-8'
+  };
+  const patchExisting = async () => fetchImpl(itemUrl, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(event)
+  });
+  const create = async () => fetchImpl(collectionUrl, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ id: eventId, ...event })
+  });
+
+  if (eventWasPersisted) {
+    const patchResponse = await patchExisting();
+    if (patchResponse.ok) return 'patched';
+    if (patchResponse.status !== 404 && patchResponse.status !== 410) {
+      throw googleCalendarRequestError(patchResponse.status);
+    }
+  }
+
+  const createResponse = await create();
+  if (createResponse.ok) return 'created';
+  if (createResponse.status === 409) {
+    const patchResponse = await patchExisting();
+    if (patchResponse.ok) return 'patched';
+    throw googleCalendarRequestError(patchResponse.status);
+  }
+  throw googleCalendarRequestError(createResponse.status);
+}
+
+export async function deleteGoogleCalendarEvent({
+  accessToken,
+  calendarId,
+  eventId,
+  fetchImpl = fetch
+}) {
+  const response = await fetchImpl(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (response.ok) return 'deleted';
+  if (response.status === 404 || response.status === 410) return 'already_absent';
+  throw googleCalendarRequestError(response.status);
+}
+
 function corsHeaders(origin) {
   const headers = {
     'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
@@ -267,6 +342,7 @@ function safeCategory(error) {
     'empty_refresh_token', 'google_reconnection_required', 'google_token_refresh_failed',
     'google_calendar_request_failed', 'invalid_event_data', 'schema_mismatch', 'missing_configuration',
     'sync_persistence_failed', 'post_google_persistence_failed', 'occurrence_changed_during_sync',
+    'google_event_id_mismatch',
     'connection_sync_metadata_failed'
   ]);
   const candidate = error?.category || error?.message || '';
@@ -291,6 +367,8 @@ export function createCalendarSyncHandler(dependencies) {
     markConnectionSynced,
     refreshAccessToken,
     upsertGoogleEvent,
+    syncTerminalGoogleEvent,
+    deleteGoogleEvent,
     getEnv,
     logger = console
   } = dependencies;
@@ -300,6 +378,7 @@ export function createCalendarSyncHandler(dependencies) {
     const origin = request.headers.get('Origin');
     let userId = null;
     let occurrenceId = null;
+    let occurrenceStatus = null;
     let googleOperation = null;
 
     if (origin && !ALLOWED_ORIGINS.has(origin)) return jsonResponse(403, { success: false, error: 'ORIGIN_NOT_ALLOWED' }, null);
@@ -315,33 +394,63 @@ export function createCalendarSyncHandler(dependencies) {
       await validateSchema();
       const occurrence = await loadOccurrence(userId, occurrenceId);
       if (!occurrence) throw new SyncError('NOT_FOUND', 404, 'Aplicação agendada não encontrada.', 'not_found');
-      if (occurrence.status !== 'scheduled') {
-        throw new SyncError('UNSUPPORTED_OCCURRENCE_STATUS', 409, 'Esta aplicação não pode ser sincronizada nesta etapa.', 'unsupported_occurrence_status');
+      occurrenceStatus = occurrence.status;
+      if (!['scheduled', 'completed', 'cancelled', 'missed'].includes(occurrenceStatus)) {
+        throw new SyncError('UNSUPPORTED_OCCURRENCE_STATUS', 409, 'Esta aplicação não pode ser sincronizada.', 'unsupported_occurrence_status');
+      }
+
+      const eventId = await deterministicEventId(occurrenceId);
+      if (occurrence.googleEventId && occurrence.googleEventId !== eventId) {
+        await setOccurrenceSync({
+          userId,
+          occurrenceId,
+          expectedStatus: occurrenceStatus,
+          syncStatus: 'error'
+        });
+        throw new SyncError(
+          'GOOGLE_EVENT_ID_MISMATCH',
+          409,
+          'A identidade do evento Google não corresponde à aplicação.',
+          'google_event_id_mismatch'
+        );
       }
 
       const connection = await loadConnection(userId);
       if (!connection || connection.connectionStatus !== 'connected' || !connection.calendarId) {
-        await setOccurrenceSync({ userId, occurrenceId, syncStatus: 'not_connected' });
+        await setOccurrenceSync({ userId, occurrenceId, expectedStatus: occurrenceStatus, syncStatus: 'not_connected' });
         throw new SyncError('GOOGLE_CONNECTION_REQUIRED', 409, 'Conecte novamente o Google Agenda.', 'google_connection_required');
       }
 
       const credential = await loadCredential(connection.id, userId);
       if (!credential) {
-        await setOccurrenceSync({ userId, occurrenceId, syncStatus: 'error' });
+        await setOccurrenceSync({ userId, occurrenceId, expectedStatus: occurrenceStatus, syncStatus: 'error' });
         throw new SyncError('GOOGLE_CREDENTIAL_UNAVAILABLE', 409, 'Reconecte o Google Agenda para continuar.', 'google_credential_unavailable');
       }
 
-      let event;
-      try {
-        event = buildGoogleEvent(occurrence);
-      } catch (error) {
-        await setOccurrenceSync({ userId, occurrenceId, syncStatus: 'error' });
-        if (error instanceof SyncError) throw error;
-        throw new SyncError('INVALID_EVENT_DATA', 422, 'Os dados desta aplicação não podem ser sincronizados.', 'invalid_event_data');
+      let event = null;
+      if (occurrenceStatus !== 'cancelled') {
+        try {
+          event = buildGoogleEvent(occurrence);
+        } catch (error) {
+          await setOccurrenceSync({ userId, occurrenceId, expectedStatus: occurrenceStatus, syncStatus: 'error' });
+          if (error instanceof SyncError) throw error;
+          throw new SyncError('INVALID_EVENT_DATA', 422, 'Os dados desta aplicação não podem ser sincronizados.', 'invalid_event_data');
+        }
       }
-      const eventId = await deterministicEventId(occurrenceId);
-      const pending = await setOccurrenceSync({ userId, occurrenceId, syncStatus: 'pending' });
-      if (!pending) throw new SyncError('SYNC_PERSISTENCE_FAILED', 500, 'A sincronização não pôde ser iniciada.', 'sync_persistence_failed');
+      const pending = await setOccurrenceSync({
+        userId,
+        occurrenceId,
+        expectedStatus: occurrenceStatus,
+        syncStatus: 'pending'
+      });
+      if (!pending) {
+        throw new SyncError(
+          'OCCURRENCE_CHANGED_DURING_SYNC',
+          409,
+          'A aplicação mudou antes do início da sincronização.',
+          'occurrence_changed_during_sync'
+        );
+      }
 
       let refreshToken;
       let clientId;
@@ -353,14 +462,14 @@ export function createCalendarSyncHandler(dependencies) {
         if (!encodedKey || !clientId || !clientSecret) throw new Error('missing_configuration');
         refreshToken = await decryptRefreshToken(credential, encodedKey);
       } catch (error) {
-        await setOccurrenceSync({ userId, occurrenceId, syncStatus: 'error' });
+        await setOccurrenceSync({ userId, occurrenceId, expectedStatus: occurrenceStatus, syncStatus: 'error' });
         throw error;
       }
       let accessToken;
       try {
         accessToken = await refreshAccessToken({ refreshToken, clientId, clientSecret });
       } catch (error) {
-        await setOccurrenceSync({ userId, occurrenceId, syncStatus: 'error' });
+        await setOccurrenceSync({ userId, occurrenceId, expectedStatus: occurrenceStatus, syncStatus: 'error' });
         if (error?.category === 'google_reconnection_required') {
           await expireConnection({ connectionId: connection.id, userId, errorCode: 'invalid_grant' });
           throw new SyncError('GOOGLE_RECONNECTION_REQUIRED', 409, 'Reconecte o Google Agenda para continuar.', 'google_reconnection_required');
@@ -369,14 +478,20 @@ export function createCalendarSyncHandler(dependencies) {
       }
 
       try {
-        googleOperation = await upsertGoogleEvent({
-          accessToken,
-          calendarId: connection.calendarId,
-          eventId,
-          event
-        });
+        const googleInput = { accessToken, calendarId: connection.calendarId, eventId };
+        if (occurrenceStatus === 'scheduled') {
+          googleOperation = await upsertGoogleEvent({ ...googleInput, event });
+        } else if (occurrenceStatus === 'cancelled') {
+          googleOperation = await deleteGoogleEvent(googleInput);
+        } else {
+          googleOperation = await syncTerminalGoogleEvent({
+            ...googleInput,
+            event,
+            eventWasPersisted: Boolean(occurrence.googleEventId)
+          });
+        }
       } catch (error) {
-        await setOccurrenceSync({ userId, occurrenceId, syncStatus: 'error' });
+        await setOccurrenceSync({ userId, occurrenceId, expectedStatus: occurrenceStatus, syncStatus: 'error' });
         const wrapped = new SyncError('GOOGLE_CALENDAR_REQUEST_FAILED', 502, 'Não foi possível sincronizar com o Google Agenda.', 'google_calendar_request_failed');
         wrapped.httpStatus = googleStatus(error);
         throw wrapped;
@@ -387,6 +502,7 @@ export function createCalendarSyncHandler(dependencies) {
         finalization = await finalizeOccurrenceSync({
           userId,
           occurrenceId,
+          expectedStatus: occurrenceStatus,
           calendarId: connection.calendarId,
           eventId,
           operation: googleOperation
@@ -433,8 +549,11 @@ export function createCalendarSyncHandler(dependencies) {
             correlation_id: correlationId,
             user_id: userId,
             occurrence_id: occurrenceId,
+            occurrence_status: occurrenceStatus,
             category: 'connection_sync_metadata_failed',
-            google_operation: googleOperation === 'updated' ? 'updated' : 'created'
+            google_operation: ['created', 'updated', 'patched', 'deleted', 'already_absent'].includes(googleOperation)
+              ? googleOperation
+              : null
           });
         } catch {
           // A telemetria é best-effort e não invalida uma sincronização confirmada.
@@ -455,9 +574,10 @@ export function createCalendarSyncHandler(dependencies) {
         correlation_id: correlationId,
         user_id: userId,
         occurrence_id: occurrenceId,
+        occurrence_status: occurrenceStatus,
         category: safeCategory(error),
         google_http_status: googleStatus(error),
-        google_operation: googleOperation === 'created' || googleOperation === 'updated'
+        google_operation: ['created', 'updated', 'patched', 'deleted', 'already_absent'].includes(googleOperation)
           ? googleOperation
           : null
       });

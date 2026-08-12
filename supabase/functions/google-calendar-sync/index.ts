@@ -2,7 +2,9 @@ import { createClient } from 'npm:@supabase/supabase-js@2.100.0';
 import postgres from 'npm:postgres@3.4.7';
 import {
   createCalendarSyncHandler,
+  deleteGoogleCalendarEvent,
   requestGoogleAccessToken,
+  syncTerminalGoogleCalendarEvent,
   upsertGoogleCalendarEvent
 } from './core.js';
 
@@ -82,6 +84,7 @@ type OccurrenceRow = {
   scheduled_time: string;
   timezone: string;
   reminder_minutes: number[];
+  google_event_id: string | null;
   medicine: string;
   dose_mg: string;
 };
@@ -95,6 +98,7 @@ async function loadOccurrence(userId: string, occurrenceId: string) {
       sa.scheduled_time::text,
       sa.timezone,
       sa.reminder_minutes,
+      sa.google_event_id,
       ap.medicine,
       ap.dose_mg::text
     from public.scheduled_applications sa
@@ -113,6 +117,7 @@ async function loadOccurrence(userId: string, occurrenceId: string) {
     scheduledTime: row.scheduled_time,
     timezone: row.timezone,
     reminderMinutes: row.reminder_minutes,
+    googleEventId: row.google_event_id,
     medicine: row.medicine,
     doseMg: row.dose_mg
   } : null;
@@ -156,6 +161,7 @@ async function loadCredential(connectionId: string, userId: string) {
 type SyncUpdate = {
   userId: string;
   occurrenceId: string;
+  expectedStatus: 'scheduled' | 'completed' | 'cancelled' | 'missed';
   syncStatus: 'not_connected' | 'pending' | 'error';
 };
 
@@ -165,7 +171,7 @@ async function setOccurrenceSync(update: SyncUpdate): Promise<boolean> {
     set google_sync_status = ${update.syncStatus}
     where id = ${update.occurrenceId}::uuid
       and user_id = ${update.userId}::uuid
-      and status = 'scheduled'
+      and status = ${update.expectedStatus}
     returning id
   `;
   return Boolean(rows[0]);
@@ -174,9 +180,10 @@ async function setOccurrenceSync(update: SyncUpdate): Promise<boolean> {
 type FinalizeSyncInput = {
   userId: string;
   occurrenceId: string;
+  expectedStatus: 'scheduled' | 'completed' | 'cancelled' | 'missed';
   calendarId: string;
   eventId: string;
-  operation: 'created' | 'updated';
+  operation: 'created' | 'updated' | 'patched' | 'deleted' | 'already_absent';
 };
 
 async function finalizeOccurrenceSync(input: FinalizeSyncInput) {
@@ -185,14 +192,14 @@ async function finalizeOccurrenceSync(input: FinalizeSyncInput) {
     set
       google_calendar_id = ${input.calendarId},
       google_event_id = ${input.eventId},
-      google_sync_status = case when status = 'scheduled' then 'synced' else 'error' end
+      google_sync_status = case when status = ${input.expectedStatus} then 'synced' else 'error' end
     where id = ${input.occurrenceId}::uuid
       and user_id = ${input.userId}::uuid
     returning status, google_sync_status
   `;
   const row = rows[0];
   if (!row) return null;
-  return row.status === 'scheduled' && row.google_sync_status === 'synced'
+  return row.status === input.expectedStatus && row.google_sync_status === 'synced'
     ? { result: 'synced' as const }
     : { result: 'occurrence_changed' as const };
 }
@@ -234,6 +241,8 @@ const handler = createCalendarSyncHandler({
   markConnectionSynced,
   refreshAccessToken: requestGoogleAccessToken,
   upsertGoogleEvent: upsertGoogleCalendarEvent,
+  syncTerminalGoogleEvent: syncTerminalGoogleCalendarEvent,
+  deleteGoogleEvent: deleteGoogleCalendarEvent,
   getEnv: (name: string) => Deno.env.get(name),
   logger: console
 });

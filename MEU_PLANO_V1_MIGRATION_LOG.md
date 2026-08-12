@@ -970,3 +970,72 @@ Somente remover a função se essa consulta retornar zero linhas após o DROP da
 - `npm run build`: SUCCESS, 12/12 arquivos source/public sincronizados.
 - Security scan: nenhuma credencial real, token, segredo ou identidade remota exposta.
 - Schema, migration, RLS, OAuth start/callback, frontend, deploy, commit e push: não alterados/executados.
+
+## 27. Etapa 5.3B.2 — ciclo de vida Google Calendar (12/08/2026)
+
+### Matriz funcional
+
+- `scheduled` continua representado por evento ativo com título “Aplicação”, horário planejado, duração de 15 minutos, timezone e reminders da ocorrência; CREATE e retry UPDATE permanecem idempotentes.
+- `completed` permanece como histórico com título “Aplicação realizada”, horário planejado e reminders removidos.
+- `missed` permanece como histórico com título “Aplicação não realizada”, horário planejado e reminders removidos.
+- `cancelled` remove o evento; DELETE 2xx, 404 e 410 são estados idempotentes de sucesso.
+- `google_sync_status = synced` passou a ser documentado como “estado remoto alinhado ao estado local”; para cancelled, o estado alinhado é a ausência do evento.
+
+### Identidade e operações Google
+
+- O event ID determinístico existente continua sendo recalculado em todas as chamadas, inclusive quando não há ID persistido.
+- Divergência entre `google_event_id` persistido e determinístico bloqueia antes de qualquer request Google, preserva o valor armazenado, marca sync `error` e retorna `GOOGLE_EVENT_ID_MISMATCH`.
+- Completed/missed com ID persistido usam PATCH somente em `summary`, `start`, `end` e `reminders`, preservando description, location, color e demais propriedades externas.
+- Se o evento terminal não existir, é criado com o mesmo ID; conflito 409 executa PATCH no mesmo recurso.
+- Cancelled usa DELETE no ID determinístico mesmo sem sincronização anterior, cobrindo CREATE remoto seguido de falha de persistência local.
+- IDs remotos nunca são limpos após cancelamento e permanecem disponíveis para auditoria e idempotência.
+
+### Concorrência e estado local
+
+- `pending` agora exige `occurrence_id + user_id + expectedStatus` para os quatro status; chamada iniciada com estado antigo não marca a ocorrência nova.
+- A finalização foi generalizada para comparar atomicamente o status atual ao `expectedStatus`, sem alterar ou restaurar o status clínico.
+- Status inalterado conclui como `synced`; mudança durante Google preserva IDs remotos, mantém o novo status, grava sync `error` e retorna `OCCURRENCE_CHANGED_DURING_SYNC`.
+- Falha Google preserva o banco local como source-of-truth.
+- Credential ausente, conexão inválida e `invalid_grant` mantêm o comportamento seguro anterior.
+- `markConnectionSynced` permanece best-effort depois da confirmação da ocorrência.
+
+### Privacidade e payload
+
+- Completed/missed enviam somente título, início, fim, timezone e reminders vazios.
+- Notes, peso, volume, UI, seringa, application ID, user ID e UUIDs internos não entram no payload Google.
+- Respostas permanecem mínimas e logs usam apenas operações allowlisted: created, updated, patched, deleted ou already_absent.
+- Calendar ID, event ID, access token, refresh token, Client Secret, resposta Google e identidade da conta não são registrados nem devolvidos.
+
+### Testes e validação
+
+- Casos AO–BL: PASS, incluindo scheduled sem regressão, PATCH terminal controlado, CREATE terminal, conflito 409, DELETE 2xx/404/410, mismatch, concorrência, retries e privacidade.
+- Testes anteriores A–AN: PASS após evolução das expectativas incompatíveis de status terminal.
+- Testes `google-calendar-sync`: 46/46 PASS.
+- Regressões OAuth start, OAuth callback e frontend Google Calendar: PASS.
+- `node --check`: PASS.
+- `git diff --check`: PASS.
+- `npm run build`: SUCCESS, 12/12 arquivos source/public sincronizados.
+- Security scan: nenhuma credencial real, token, segredo, calendar ID ou event ID exposto.
+- Nenhuma chamada Google real ou uso de credenciais reais foi executado.
+- Schema, migration, RLS, OAuth start/callback, frontend, Google Cloud, scopes, deploy, commit e push: não alterados/executados.
+
+## 28. Hotfix 5.3B.2.1 — completar cobertura de testes (12/08/2026)
+
+### Cobertura BM–BP
+
+- BM — completed com ID persistido: PATCH 404 seguido de POST 2xx, usando exatamente o mesmo event ID e retornando operação interna `created`: PASS.
+- BN — missed com ID persistido: PATCH 410 seguido de POST 2xx, usando exatamente o mesmo event ID e retornando operação interna `created`: PASS.
+- Em BM/BN, o payload PATCH contém exclusivamente `summary`, `start`, `end` e `reminders`; o CREATE acrescenta somente o `id` técnico obrigatório ao mesmo payload controlado.
+- BO — recovery concorrente/idempotente: sequência simulada `PATCH 404 → POST 409 → PATCH 200`, mesmo event ID nas três operações, resultado `patched` e nenhuma duplicidade: PASS.
+- BP — PATCH 404 seguido de POST 503: handler retorna `GOOGLE_CALENDAR_REQUEST_FAILED`, sync local termina em `error`, status e dados da occurrence permanecem inalterados e a finalização de sucesso não é chamada: PASS.
+- Resposta e logs de BP não contêm access token, refresh token, Client Secret, calendar ID ou event ID: PASS.
+
+### Validação
+
+- Código de produção revisado: nenhuma alteração necessária; o recovery existente comportou-se corretamente.
+- Testes `google-calendar-sync`: 50/50 PASS, 0 FAIL.
+- `node --check`: PASS.
+- `git diff --check`: PASS.
+- `npm run build`: SUCCESS, 12/12 arquivos source/public sincronizados.
+- Nenhuma credencial real ou request Google real foi utilizada.
+- Schema, migration, RLS, OAuth, frontend, deploy, commit e push: não alterados/executados.
