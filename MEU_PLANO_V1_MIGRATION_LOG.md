@@ -849,3 +849,26 @@ Somente remover a função se essa consulta retornar zero linhas após o DROP da
 - `git diff --check`: PASS.
 - `npm run build`: SUCCESS, 12/12 arquivos sincronizados.
 - Deploy, redeploy, OAuth real, sync, Google Cloud, Secrets, commit e push: não executados.
+
+## 24. Hotfix 5.3A.2 — clareza de estados da conexão Google Agenda (12/08/2026)
+
+### Ajuste visual
+
+- Conexão saudável mantém status `Conectado` e a ação passou de `Reconectar` para `Trocar conta`.
+- Sem connection ou com status disconnected: `Não conectado` e `Conectar Google Agenda`.
+- Status expired: `Conexão expirada`, orientação de reconexão e botão `Reconectar`.
+- Status revoked: `Permissão removida`, orientação para autorizar novamente e botão `Reconectar`.
+- Status error: `Problema na conexão`, mensagem de falha de validação e botão `Tentar novamente`.
+- “Trocar conta” reutiliza o mesmo controlador e a mesma Edge Function `google-oauth-start`; nenhuma regra OAuth foi alterada.
+
+### Validações
+
+- Mapeamento de todos os seis estados visuais: PASS.
+- Trocar conta reutiliza o mesmo OAuth start: PASS.
+- Falha de consulta renderiza estado `Problema na conexão`: PASS.
+- `node --check` do módulo e teste frontend: PASS.
+- Testes Google Calendar frontend: PASS.
+- `git diff --check`: PASS.
+- `npm run build`: SUCCESS, 12/12 arquivos source/public sincronizados.
+- Callback, banco, RLS, disconnect, sync e eventos Google: não alterados.
+- Deploy, commit e push: não executados.

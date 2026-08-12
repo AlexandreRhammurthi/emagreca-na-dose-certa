@@ -34,19 +34,34 @@ export function connectionView(connection) {
     return {
       state,
       status: 'Conectado',
-      action: 'Reconectar',
+      action: 'Trocar conta',
       account: connection.google_account_hint ? `Conta: ${connection.google_account_hint}` : '',
       message: ''
     };
   }
-  const requiresReconnect = ['expired', 'revoked', 'error'].includes(state);
-  return {
-    state,
-    status: 'Não conectado',
-    action: 'Reconectar Google Agenda',
-    account: '',
-    message: requiresReconnect ? 'É necessário reconectar sua conta Google.' : ''
+  const views = {
+    expired: {
+      status: 'Conexão expirada',
+      action: 'Reconectar',
+      message: 'É necessário reconectar sua conta Google.'
+    },
+    revoked: {
+      status: 'Permissão removida',
+      action: 'Reconectar',
+      message: 'Autorize novamente o acesso ao Google Agenda.'
+    },
+    error: {
+      status: 'Problema na conexão',
+      action: 'Tentar novamente',
+      message: 'Não foi possível validar a conexão com o Google Agenda.'
+    },
+    disconnected: {
+      status: 'Não conectado',
+      action: 'Conectar Google Agenda',
+      message: ''
+    }
   };
+  return { state, account: '', ...views[state] };
 }
 
 export function googleOAuthFeedback(result, connection = null) {
