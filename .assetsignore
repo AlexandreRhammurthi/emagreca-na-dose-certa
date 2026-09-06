@@ -1,8 +1,8 @@
-# Dependï¿½ncias e ferramentas
+# Dependências e ferramentas
 node_modules/
 .wrangler/
 
-# Git / configuraï¿½ï¿½o de desenvolvimento
+# Git / configuração de desenvolvimento
 .git/
 .github/
 .gitignore
@@ -10,7 +10,7 @@ node_modules/
 # QA e testes internos
 tests/
 
-# Documentaï¿½ï¿½o interna
+# Documentação interna
 AUTH_V1.1_LOG.md
 RLS_V1_LOG.md
 RLS_TEST_RESULT.md
@@ -31,7 +31,7 @@ package-lock.json
 .DS_Store
 Thumbs.db
 
-# Wrangler config nï¿½o deve ser asset pï¿½blico
+# Wrangler config não deve ser asset público
 wrangler.json
 wrangler.jsonc
 wrangler.toml

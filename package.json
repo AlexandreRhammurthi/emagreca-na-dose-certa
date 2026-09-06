@@ -3,15 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server.js",
-    "start": "node server.js",
     "build": "node scripts/build.mjs",
     "deploy": "npm run build && wrangler deploy --assets ./public/",
     "test:rls": "node ./tests/rls/rls-test.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.100.0",
-    "express": "^5.2.1"
+    "@supabase/supabase-js": "2.100.0"
   },
   "devDependencies": {
     "supabase": "^2.113.0"

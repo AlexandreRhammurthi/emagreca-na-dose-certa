@@ -1,6 +1,0 @@
-{
-  "name": "Dose Certa",
-  "description": "Simulador visual educativo para conversão de doses em seringas U-100.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
