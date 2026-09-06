@@ -106,25 +106,219 @@
           <div class="visual-result">
             <div class="syringe-area">
               <div class="syringe-labels" id="syringe-labels" aria-hidden="true"></div>
-              <svg class="syringe" id="syringe" viewBox="0 0 560 190" role="img" aria-label="Seringa preenchida até 8,33 unidades">
+              <svg class="syringe" id="syringe" viewBox="0 0 760 120" role="img" aria-label="Seringa preenchida até 8,33 unidades">
                 <defs>
-                  <linearGradient id="liquidGradient" x1="0" x2="1"><stop stop-color="#55cbb4"/><stop offset="1" stop-color="#1ba88f"/></linearGradient>
-                  <filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="6" flood-opacity=".12"/></filter>
+                  <!-- Gradiente do líquido verde-turquesa -->
+                  <linearGradient id="liquidGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#7fead6" stop-opacity="0.85"/>
+                    <stop offset="25%" stop-color="#4ad1b8" stop-opacity="0.9"/>
+                    <stop offset="70%" stop-color="#1ba88f" stop-opacity="0.95"/>
+                    <stop offset="100%" stop-color="#12836f" stop-opacity="0.95"/>
+                  </linearGradient>
+
+                  <!-- Gradientes das paredes de vidro/plástico do cilindro -->
+                  <linearGradient id="barrelGlass" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
+                    <stop offset="15%" stop-color="#eef6f4" stop-opacity="0.25"/>
+                    <stop offset="50%" stop-color="#ffffff" stop-opacity="0.08"/>
+                    <stop offset="85%" stop-color="#e2eee9" stop-opacity="0.3"/>
+                    <stop offset="100%" stop-color="#cbe0da" stop-opacity="0.5"/>
+                  </linearGradient>
+
+                  <!-- Fundo da câmara interna do cilindro -->
+                  <linearGradient id="barrelInnerBg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#f2f7f5"/>
+                    <stop offset="50%" stop-color="#ffffff"/>
+                    <stop offset="100%" stop-color="#edf4f1"/>
+                  </linearGradient>
+
+                  <!-- Borracha escura da vedação do êmbolo (duplo anel) -->
+                  <linearGradient id="rubberBody" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#1c2523"/>
+                    <stop offset="25%" stop-color="#3a4845"/>
+                    <stop offset="55%" stop-color="#1e2825"/>
+                    <stop offset="85%" stop-color="#131917"/>
+                    <stop offset="100%" stop-color="#0b100e"/>
+                  </linearGradient>
+                  <linearGradient id="rubberRib" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#283532"/>
+                    <stop offset="30%" stop-color="#4c5d5a"/>
+                    <stop offset="60%" stop-color="#263330"/>
+                    <stop offset="100%" stop-color="#0f1513"/>
+                  </linearGradient>
+
+                  <!-- Haste plástica do êmbolo -->
+                  <linearGradient id="plungerRodGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffffff"/>
+                    <stop offset="40%" stop-color="#e7efed"/>
+                    <stop offset="70%" stop-color="#d6e3df"/>
+                    <stop offset="100%" stop-color="#baccc7"/>
+                  </linearGradient>
+
+                  <!-- Plástico da flange e apoio -->
+                  <linearGradient id="flangeGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffffff"/>
+                    <stop offset="30%" stop-color="#f0f6f4"/>
+                    <stop offset="70%" stop-color="#d9e6e2"/>
+                    <stop offset="100%" stop-color="#b6cbc5"/>
+                  </linearGradient>
+                  <linearGradient id="thumbRestGrad" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#d5e3df"/>
+                    <stop offset="40%" stop-color="#ffffff"/>
+                    <stop offset="80%" stop-color="#e2ece9"/>
+                    <stop offset="100%" stop-color="#cadad5"/>
+                  </linearGradient>
+
+                  <!-- Protetor e conexão laranja médica -->
+                  <linearGradient id="orangeCapGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ff914d"/>
+                    <stop offset="20%" stop-color="#ff7524"/>
+                    <stop offset="50%" stop-color="#f35e0e"/>
+                    <stop offset="80%" stop-color="#d74c05"/>
+                    <stop offset="100%" stop-color="#aa3800"/>
+                  </linearGradient>
+                  <linearGradient id="orangeCollarGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffa066"/>
+                    <stop offset="30%" stop-color="#f96d1c"/>
+                    <stop offset="70%" stop-color="#dc5006"/>
+                    <stop offset="100%" stop-color="#b83c00"/>
+                  </linearGradient>
+
+                  <!-- Bico/Hub translúcido -->
+                  <linearGradient id="hubGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+                    <stop offset="40%" stop-color="#eaf3f0" stop-opacity="0.6"/>
+                    <stop offset="70%" stop-color="#d3e4df" stop-opacity="0.5"/>
+                    <stop offset="100%" stop-color="#b4cbc5" stop-opacity="0.8"/>
+                  </linearGradient>
+
+                  <!-- Filtros para sombras suaves no chão -->
+                  <filter id="groundShadowBlur" x="-10%" y="-50%" width="120%" height="200%">
+                    <feGaussianBlur stdDeviation="3.5"/>
+                  </filter>
+                  <filter id="groundShadowTight" x="-10%" y="-50%" width="120%" height="200%">
+                    <feGaussianBlur stdDeviation="1.5"/>
+                  </filter>
+
+                  <!-- Limite estrito do interior do cilindro -->
+                  <clipPath id="barrelClip">
+                    <rect x="144" y="45" width="446" height="30" rx="2"/>
+                  </clipPath>
                 </defs>
-                <g filter="url(#shadow)">
-                  <path d="M492 80h38v30h-38" fill="#fff" stroke="#193c3a" stroke-width="3"/>
-                  <path d="M530 89h28v12h-28" fill="#d9e3df" stroke="#193c3a" stroke-width="3"/>
-                  <path d="M558 95h2" stroke="#193c3a" stroke-width="3"/>
-                  <rect x="70" y="48" width="424" height="94" rx="8" fill="#fff" stroke="#193c3a" stroke-width="4"/>
-                  <rect id="liquid" x="420" y="53" width="69" height="84" rx="3" fill="url(#liquidGradient)"/>
-                  <rect id="plunger-stop" x="408" y="50" width="13" height="90" rx="2" fill="#173e3b"/>
-                  <path id="plunger-rod" d="M27 81H408v28H27" fill="#edf2f0" stroke="#193c3a" stroke-width="3"/>
-                  <rect x="5" y="68" width="24" height="54" rx="4" fill="#fff" stroke="#193c3a" stroke-width="3"/>
-                  <path d="M54 35v120M54 35h26M54 155h26" stroke="#193c3a" stroke-width="4" stroke-linecap="round"/>
+
+                <!-- 1. Sombra suave no plano inferior -->
+                <g id="layer-sombra" aria-hidden="true">
+                  <ellipse cx="385" cy="100" rx="355" ry="6.5" fill="#0e2a27" opacity="0.16" filter="url(#groundShadowBlur)"/>
+                  <ellipse cx="385" cy="95" rx="345" ry="3.2" fill="#0e2a27" opacity="0.22" filter="url(#groundShadowTight)"/>
+                  <ellipse cx="44" cy="97" rx="26" ry="4" fill="#0e2a27" opacity="0.18" filter="url(#groundShadowBlur)"/>
+                  <ellipse cx="682" cy="97" rx="55" ry="4.5" fill="#0e2a27" opacity="0.18" filter="url(#groundShadowBlur)"/>
                 </g>
-                <g id="ticks" stroke="#244b48"></g>
-                <line id="dose-marker" x1="420" x2="420" y1="34" y2="146" stroke="#ef7b5d" stroke-width="3" stroke-dasharray="5 4"/>
-                <path id="marker-arrow" d="M420 25l-7 9h14Z" fill="#ef7b5d"/>
+
+                <!-- 2. Apoio do polegar -->
+                <g id="layer-apoio-polegar">
+                  <path d="M22 36 h5 c3.5 0 6 10.7 6 24 s-2.5 24 -6 24 h-5 c-3.5 0 -6 -10.7 -6 -24 s2.5 -24 6 -24 Z" fill="url(#thumbRestGrad)" stroke="#9cb4ae" stroke-width="1.2"/>
+                  <ellipse cx="23" cy="60" rx="4.5" ry="21" fill="#e9f2ef" stroke="#b9ccc7" stroke-width="0.9"/>
+                  <ellipse cx="22" cy="60" rx="2" ry="17" fill="#ffffff" opacity="0.8"/>
+                  <rect x="27" y="53" width="7" height="14" fill="#d8e5e1" stroke="#9cb4ae" stroke-width="0.8"/>
+                </g>
+
+                <!-- 3. Haste do êmbolo -->
+                <g id="layer-haste-embolo">
+                  <path id="plunger-rod" d="M34 54H491v12H34Z" fill="url(#plungerRodGrad)" stroke="#a6bfb9" stroke-width="0.8"/>
+                  <line id="plunger-rod-rib" x1="34" y1="60" x2="491" y2="60" stroke="#bccdc8" stroke-width="2.2" stroke-linecap="round"/>
+                  <line id="plunger-rod-rib-hi" x1="34" y1="59.2" x2="491" y2="59.2" stroke="#ffffff" stroke-width="0.8" opacity="0.85"/>
+                </g>
+
+                <!-- 4. Flange de apoio dos dedos -->
+                <g id="layer-flange">
+                  <rect x="130" y="27" width="11" height="66" rx="5.5" fill="url(#flangeGrad)" stroke="#8da8a1" stroke-width="1.2"/>
+                  <rect x="132" y="30" width="7" height="60" rx="3.5" fill="none" stroke="#ffffff" stroke-width="0.9" opacity="0.8"/>
+                  <path d="M140 43 h5 v34 h-5 Z" fill="url(#thumbRestGrad)" stroke="#8da8a1" stroke-width="1"/>
+                </g>
+
+                <!-- 5. Área interna do cilindro -->
+                <g id="layer-area-interna">
+                  <rect x="144" y="45" width="446" height="30" rx="1.5" fill="url(#barrelInnerBg)"/>
+                </g>
+
+                <!-- 6. Líquido translúcido -->
+                <g id="layer-liquido" clip-path="url(#barrelClip)">
+                  <rect id="liquid" x="509" y="45" width="65" height="30" fill="url(#liquidGradient)"/>
+                  <line x1="144" y1="46" x2="590" y2="46" stroke="#ffffff" stroke-width="0.8" opacity="0.4"/>
+                </g>
+
+                <!-- 7. Vedação de borracha escura -->
+                <g id="layer-vedacao" clip-path="url(#barrelClip)">
+                  <g id="plunger-stop" transform="translate(491, 0)">
+                    <rect x="0" y="45" width="18" height="30" fill="url(#rubberBody)"/>
+                    <rect x="0.5" y="45" width="4" height="30" fill="url(#rubberRib)"/>
+                    <line x1="2.5" y1="45" x2="2.5" y2="75" stroke="#485955" stroke-width="0.7"/>
+                    <rect x="4.5" y="46.5" width="7" height="27" fill="#131917"/>
+                    <rect x="11.5" y="45" width="6.5" height="30" fill="url(#rubberRib)"/>
+                    <line x1="15" y1="45" x2="15" y2="75" stroke="#485955" stroke-width="0.7"/>
+                    <line x1="18" y1="45" x2="18" y2="75" stroke="#1c2523" stroke-width="0.8"/>
+                    <line x1="0" y1="60" x2="18" y2="60" stroke="#ffffff" stroke-width="1.2" opacity="0.2"/>
+                  </g>
+                </g>
+
+                <!-- 8. Escala e números estritamente dentro do cilindro -->
+                <g id="layer-escala" clip-path="url(#barrelClip)">
+                  <g id="ticks" stroke="#162e2c"></g>
+                </g>
+
+                <!-- 9. Parede externa do cilindro -->
+                <g id="layer-cilindro-externo" pointer-events="none">
+                  <rect x="144" y="43" width="446" height="34" rx="3" fill="url(#barrelGlass)" stroke="#8faaa3" stroke-width="1.3"/>
+                </g>
+
+                <!-- 10. Reflexos longitudinais do plástico -->
+                <g id="layer-reflexos" pointer-events="none">
+                  <line x1="147" y1="45" x2="587" y2="45" stroke="#ffffff" stroke-width="1.8" opacity="0.9" stroke-linecap="round"/>
+                  <line x1="147" y1="47.5" x2="587" y2="47.5" stroke="#ffffff" stroke-width="0.7" opacity="0.5" stroke-linecap="round"/>
+                  <line x1="147" y1="74" x2="587" y2="74" stroke="#ffffff" stroke-width="1.3" opacity="0.75" stroke-linecap="round"/>
+                  <line x1="147" y1="72" x2="587" y2="72" stroke="#e8f3ef" stroke-width="0.6" opacity="0.4" stroke-linecap="round"/>
+                </g>
+
+                <!-- 11. Bico da seringa -->
+                <g id="layer-bico">
+                  <path d="M590 43 L604 49 L604 71 L590 77 Z" fill="url(#hubGrad)" stroke="#8faaa3" stroke-width="1.2"/>
+                  <polygon points="590,57.5 604,59 604,61 590,62.5" fill="#20b99c" opacity="0.8"/>
+                </g>
+
+                <!-- 12. Conexão e adaptador luer -->
+                <g id="layer-conexao">
+                  <rect x="604" y="51" width="22" height="18" rx="2" fill="url(#hubGrad)" stroke="#8faaa3" stroke-width="1.1"/>
+                  <line x1="605" y1="53" x2="625" y2="53" stroke="#ffffff" stroke-width="1" opacity="0.8"/>
+                  <polygon points="604,59 620,59.5 620,60.5 604,61" fill="#1ba88f" opacity="0.7"/>
+                </g>
+
+                <!-- 13. Agulha interna metálica -->
+                <g id="layer-agulha">
+                  <line x1="616" y1="60" x2="710" y2="60" stroke="#7e8f8b" stroke-width="0.9"/>
+                </g>
+
+                <!-- 14. Protetor laranja estriado -->
+                <g id="layer-protetor-laranja">
+                  <rect x="624" y="46" width="10" height="28" rx="2" fill="url(#orangeCollarGrad)" stroke="#b83c00" stroke-width="1"/>
+                  <line x1="626.5" y1="48" x2="626.5" y2="72" stroke="#ffb182" stroke-width="1"/>
+                  <line x1="629" y1="48" x2="629" y2="72" stroke="#b83c00" stroke-width="0.8"/>
+                  <line x1="631.5" y1="48" x2="631.5" y2="72" stroke="#ffb182" stroke-width="1"/>
+                  <path d="M634 49.5 h92 a3.5 3.5 0 0 1 3.5 3.5 v14 a3.5 3.5 0 0 1 -3.5 3.5 h-92 Z" fill="url(#orangeCapGrad)" stroke="#b83c00" stroke-width="1"/>
+                  <rect x="635" y="49" width="3" height="22" fill="#e05408"/>
+                  <path d="M729.5 51.5 h3.5 a2 2 0 0 1 2 2 v13 a2 2 0 0 1 -2 2 h-3.5 Z" fill="#cf4a04" stroke="#b83c00" stroke-width="1"/>
+                  <line x1="635" y1="52.5" x2="728" y2="52.5" stroke="#ffd2b8" stroke-width="1.6" opacity="0.9" stroke-linecap="round"/>
+                  <line x1="635" y1="68" x2="728" y2="68" stroke="#8d2e00" stroke-width="1" opacity="0.6"/>
+                </g>
+
+                <!-- 15. Marcador da dose (linha vertical tracejada coral) -->
+                <g id="layer-marcador">
+                  <line id="dose-marker" x1="509" y1="34" x2="509" y2="80" stroke="#ef5a36" stroke-width="1.8" stroke-dasharray="3.5 2.5"/>
+                </g>
+
+                <!-- 16. Seta do marcador (triângulo coral apontador) -->
+                <g id="layer-seta">
+                  <path id="marker-arrow" d="M509 33 l-6 -11 h12 Z" fill="#ef5a36"/>
+                </g>
               </svg>
               <div class="capacity-caption"><span>ÊMBOLO</span><span>AGULHA</span></div>
             </div>

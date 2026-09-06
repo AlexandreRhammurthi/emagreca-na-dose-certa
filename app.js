@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const inputs = ['vial-mg', 'vial-ml', 'dose-mg'];
-const syringeStart = 82;
-const syringeEnd = 489;
+const syringeStart = 184;
+const syringeEnd = 574;
 let currentSimulation = null;
 const medicines = Object.freeze([
   Object.freeze({ value: 'tirzepatida', label: 'Tirzepatida' }),
@@ -55,21 +55,40 @@ function renderTicks(capacity) {
   ticks.replaceChildren();
   const step = capacity === 100 ? 2 : 1;
   const count = capacity / step;
+  const majorEvery = capacity === 100 ? 10 : 5;
+  const innerTop = 45;
+  const majorTickY2 = 55;
+  const minorTickY2 = 50;
+  const labelY = 69.5;
+  const fontSize = capacity === 100 ? '10.5' : '12';
+  const strokeWidth = capacity === 100 ? '2.3' : '2.7';
+
   for (let i = 0; i <= count; i++) {
     const value = i * step;
     const x = syringeEnd - (value / capacity) * (syringeEnd - syringeStart);
-    const majorEvery = capacity === 100 ? 10 : 5;
     const major = value % majorEvery === 0;
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', x); line.setAttribute('x2', x);
-    line.setAttribute('y1', 49); line.setAttribute('y2', major ? 70 : 61);
-    line.setAttribute('stroke-width', major ? 2 : 1);
+    line.setAttribute('y1', innerTop); line.setAttribute('y2', major ? majorTickY2 : minorTickY2);
+    line.setAttribute('stroke', '#162e2c');
+    line.setAttribute('stroke-width', major ? 1.25 : 0.85);
     ticks.appendChild(line);
-    if (major && value < capacity && value > 0) {
+
+    if (major && value > 0 && value <= capacity) {
       const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      label.setAttribute('x', x); label.setAttribute('y', 43);
-      label.setAttribute('text-anchor', 'middle'); label.setAttribute('fill', '#617773');
-      label.setAttribute('font-size', '10'); label.setAttribute('font-family', 'DM Sans');
+      label.setAttribute('x', x);
+      label.setAttribute('y', labelY);
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('fill', '#0e2926');
+      label.setAttribute('stroke', '#ffffff');
+      label.setAttribute('stroke-width', strokeWidth);
+      label.setAttribute('stroke-linejoin', 'round');
+      label.setAttribute('stroke-linecap', 'round');
+      label.setAttribute('paint-order', 'stroke fill');
+      label.setAttribute('font-size', fontSize);
+      label.setAttribute('font-family', "'DM Sans', sans-serif");
+      label.setAttribute('font-weight', '800');
+      label.classList.add('tick-label');
       label.textContent = value;
       ticks.appendChild(label);
     }
@@ -101,17 +120,51 @@ function update() {
   const displayPercentage = Math.min(100, Math.max(0, percentage));
   const markerX = syringeEnd - (displayPercentage / 100) * (syringeEnd - syringeStart);
   const liquidWidth = syringeEnd - markerX;
+  const stopperWidth = 18;
+  const stopperX = markerX - stopperWidth;
+  const rodEnd = Math.max(34, stopperX);
 
   $('units-value').textContent = number(units);
   $('ml-value').textContent = `${number(volume, 3)} mL`;
   $('capacity-text').textContent = `${number(percentage, 1)}% da seringa de ${capacity} UI`;
   $('capacity-fill').style.width = `${displayPercentage}%`;
-  $('liquid').setAttribute('x', markerX);
-  $('liquid').setAttribute('width', liquidWidth);
-  $('plunger-stop').setAttribute('x', markerX - 12);
-  $('plunger-rod').setAttribute('d', `M27 81H${markerX - 11}v28H27`);
-  $('dose-marker').setAttribute('x1', markerX); $('dose-marker').setAttribute('x2', markerX);
-  $('marker-arrow').setAttribute('d', `M${markerX} 25l-7 9h14Z`);
+
+  const liquidEl = $('liquid');
+  if (liquidEl) {
+    liquidEl.setAttribute('x', markerX);
+    liquidEl.setAttribute('width', liquidWidth);
+  }
+
+  const plungerStop = $('plunger-stop');
+  if (plungerStop) {
+    plungerStop.setAttribute('transform', `translate(${stopperX}, 0)`);
+    plungerStop.setAttribute('x', stopperX);
+  }
+
+  const plungerRod = $('plunger-rod');
+  if (plungerRod) {
+    plungerRod.setAttribute('d', `M34 54H${rodEnd}v12H34Z`);
+  }
+  const plungerRodRib = $('plunger-rod-rib');
+  if (plungerRodRib) {
+    plungerRodRib.setAttribute('x2', rodEnd);
+  }
+  const plungerRodHi = $('plunger-rod-rib-hi');
+  if (plungerRodHi) {
+    plungerRodHi.setAttribute('x2', rodEnd);
+  }
+
+  const doseMarker = $('dose-marker');
+  if (doseMarker) {
+    doseMarker.setAttribute('x1', markerX);
+    doseMarker.setAttribute('x2', markerX);
+  }
+
+  const markerArrow = $('marker-arrow');
+  if (markerArrow) {
+    markerArrow.setAttribute('d', `M${markerX} 33l-6 -11h12Z`);
+  }
+
   $('syringe').setAttribute('aria-label', `Seringa preenchida até ${number(units)} unidades`);
 
   $('calc-concentration').textContent = `${number(vialMg)} mg ÷ ${number(vialMl)} mL = ${number(concentration)} mg/mL`;
