@@ -130,7 +130,6 @@
   }
 
   function closeDeleteModal(restoreFocus = true) {
-    if (requestInFlight) return;
     deleteModal.hidden = true;
     deletingId = null;
     if (modal.hidden) document.body.classList.remove('auth-modal-open');
@@ -537,22 +536,28 @@
       weight_kg: weightKg,
       notes: notes.value.trim() || null
     };
-    const result = updating
-      ? await client.from('weight_records').update(payload)
-        .eq('id', editingId)
-        .eq('source', 'manual')
-        .is('application_id', null)
-        .select('id,record_date,weight_kg,notes,source,application_id,created_at')
-        .single()
-      : await client.from('weight_records').insert({
-        ...payload,
-        user_id: userData.user.id,
-        source: 'manual',
-        application_id: null
-      }).select('id,record_date,weight_kg,notes,source,application_id,created_at').single();
-    requestInFlight = false;
-    submit.disabled = false;
-    submit.classList.remove('is-loading');
+    let result;
+    try {
+      result = updating
+        ? await client.from('weight_records').update(payload)
+          .eq('id', editingId)
+          .eq('source', 'manual')
+          .is('application_id', null)
+          .select('id,record_date,weight_kg,notes,source,application_id,created_at')
+          .single()
+        : await client.from('weight_records').insert({
+          ...payload,
+          user_id: userData.user.id,
+          source: 'manual',
+          application_id: null
+        }).select('id,record_date,weight_kg,notes,source,application_id,created_at').single();
+    } catch (error) {
+      result = { data: null, error };
+    } finally {
+      requestInFlight = false;
+      submit.disabled = false;
+      submit.classList.remove('is-loading');
+    }
     const invalidUpdate = updating && (result.data?.id !== editingId || result.data?.source !== 'manual' || result.data?.application_id !== null);
     if (result.error || !result.data || invalidUpdate) {
       reportTechnicalError(updating ? 'falha ao atualizar peso' : 'falha ao registrar peso', result.error);
@@ -578,14 +583,20 @@
     const button = event.currentTarget;
     requestInFlight = true;
     button.disabled = true;
-    const result = await client.from('weight_records').delete()
-      .eq('id', id)
-      .eq('source', 'manual')
-      .is('application_id', null)
-      .select('id')
-      .maybeSingle();
-    requestInFlight = false;
-    button.disabled = false;
+    let result;
+    try {
+      result = await client.from('weight_records').delete()
+        .eq('id', id)
+        .eq('source', 'manual')
+        .is('application_id', null)
+        .select('id')
+        .maybeSingle();
+    } catch (error) {
+      result = { data: null, error };
+    } finally {
+      requestInFlight = false;
+      button.disabled = false;
+    }
     if (result.error || result.data?.id !== id) {
       reportTechnicalError('falha ao excluir peso', result.error);
       deleteMessage.textContent = friendlyError(result.error, 'Não foi possível excluir o registro. Tente novamente.');

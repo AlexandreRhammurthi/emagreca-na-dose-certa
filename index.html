@@ -366,7 +366,7 @@
             <h2 id="diary-title">Meu Diário</h2>
             <p>Acompanhe suas aplicações registradas.</p>
           </div>
-          <button class="secondary-action" id="diary-simulate" type="button">Fazer uma simulação</button>
+          <button class="secondary-action" id="diary-simulate" type="button">Registrar nova Aplicação</button>
         </div>
         <div class="diary-status" id="diary-status" role="status" aria-live="polite">Carregando seu diário...</div>
         <div class="diary-dashboard" id="diary-dashboard" hidden>
@@ -604,6 +604,7 @@
     <div class="diary-modal" id="weight-delete-modal" hidden>
       <div class="diary-backdrop" data-weight-delete-close></div>
       <section class="diary-dialog diary-dialog-small" role="alertdialog" aria-modal="true" aria-labelledby="weight-delete-title" aria-describedby="weight-delete-description" tabindex="-1">
+        <button class="auth-close" type="button" data-weight-delete-close aria-label="Fechar confirmação de exclusão">×</button>
         <h2 id="weight-delete-title">Excluir este registro de peso?</h2>
         <p class="auth-subtitle" id="weight-delete-description">Esta ação não poderá ser desfeita.</p>
         <div class="auth-message" id="weight-delete-message" role="alert" hidden></div>

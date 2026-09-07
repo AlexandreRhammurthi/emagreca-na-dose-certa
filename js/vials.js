@@ -13,14 +13,22 @@
   let returnFocus = null;
   let pendingMedicine = '';
 
+  async function resolveCurrentUserId() {
+    if (currentUserId) return currentUserId;
+    if (!client) return null;
+    const { data, error } = await client.auth.getUser();
+    currentUserId = error ? null : data.user?.id || null;
+    return currentUserId;
+  }
+
   function setMessage(text = '') { message.textContent = text; message.hidden = !text; }
   function close() {
     modal.hidden = true;
     if (document.querySelectorAll('.diary-modal:not([hidden]),.auth-modal:not([hidden])').length === 0) document.body.classList.remove('auth-modal-open');
     returnFocus?.focus();
   }
-  function open({ medicine = '', trigger = document.activeElement } = {}) {
-    if (!currentUserId) return;
+  async function open({ medicine = '', trigger = document.activeElement } = {}) {
+    if (!await resolveCurrentUserId()) return;
     returnFocus = trigger;
     pendingMedicine = String(medicine || '').trim();
     form.reset();
@@ -54,7 +62,10 @@
     return `${vial.medicine} · saldo ${format(remainingMg)} mg / ${format(remainingMl)} mL`;
   }
   async function loadActive({ selectedId = '', medicine = '' } = {}) {
-    if (!client || !currentUserId) return [];
+    if (!client || !await resolveCurrentUserId()) {
+      select.replaceChildren(new Option('Não vincular a um frasco', ''));
+      return [];
+    }
     const { data, error } = await client.from('medication_vials')
       .select('id,medicine,initial_mg,initial_ml,status,created_at,vial_usages(used_mg,used_ml)')
       .eq('status', 'active')
@@ -84,7 +95,7 @@
   replacementCreate.addEventListener('click', () => { replacementModal.hidden = true; open({ medicine: pendingMedicine, trigger: replacementCreate }); });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!client || !currentUserId) return;
+    if (!client || !await resolveCurrentUserId()) { setMessage('Sua sessão expirou. Entre novamente.'); return; }
     const medicine = form.elements.medicine.value.trim();
     const initialMg = number(form.elements.initial_mg.value);
     const initialMl = number(form.elements.initial_ml.value);
