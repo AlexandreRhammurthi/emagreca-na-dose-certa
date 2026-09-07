@@ -111,7 +111,6 @@
   }
 
   function closeModal(restoreFocus = true) {
-    if (formRequestInFlight) return;
     modal.hidden = true;
     editingId = null;
     if (deleteModal.hidden) document.body.classList.remove('auth-modal-open');
@@ -517,8 +516,9 @@
       setMessage('Informe uma data e um peso válido maior que zero.');
       return;
     }
-    const updating = Boolean(editingId);
-    const selectedRecord = updating ? records.get(editingId) : null;
+    const recordId = editingId;
+    const updating = Boolean(recordId);
+    const selectedRecord = updating ? records.get(recordId) : null;
     if (updating && (!selectedRecord || selectedRecord.source !== 'manual' || selectedRecord.application_id !== null)) {
       setMessage('Este registro não pode ser editado por esta tela.');
       return;
@@ -547,7 +547,7 @@
     try {
       result = updating
         ? await client.from('weight_records').update(payload)
-          .eq('id', editingId)
+          .eq('id', recordId)
           .eq('source', 'manual')
           .is('application_id', null)
           .select('id,record_date,weight_kg,notes,source,application_id,created_at')
@@ -565,7 +565,7 @@
       submit.disabled = false;
       submit.classList.remove('is-loading');
     }
-    const invalidUpdate = updating && (result.data?.id !== editingId || result.data?.source !== 'manual' || result.data?.application_id !== null);
+    const invalidUpdate = updating && (result.data?.id !== recordId || result.data?.source !== 'manual' || result.data?.application_id !== null);
     if (result.error || !result.data || invalidUpdate) {
       reportTechnicalError(updating ? 'falha ao atualizar peso' : 'falha ao registrar peso', result.error);
       setMessage(friendlyError(result.error, updating ? 'Não foi possível atualizar o peso. Tente novamente.' : 'Não foi possível registrar o peso. Tente novamente.'));
@@ -577,6 +577,7 @@
   });
 
   document.getElementById('weight-delete-confirm').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
     if (!client || deleteRequestInFlight || !deletingId) return;
     const id = deletingId;
     const record = records.get(id);
@@ -593,7 +594,6 @@
       deleteMessage.hidden = false;
       return;
     }
-    const button = event.currentTarget;
     deleteRequestInFlight = true;
     button.disabled = true;
     let result;

@@ -29,7 +29,8 @@
   let currentUserId = null;
   let selectedId = null;
   let pendingRegistration = false;
-  let requestInFlight = false;
+  let formRequestInFlight = false;
+  let deleteRequestInFlight = false;
   let latestDashboardId = null;
   let formMode = 'normal';
   let scheduledConfirmation = null;
@@ -108,7 +109,6 @@
   }
 
   function closeModal(modal, restoreFocus = true) {
-    if (requestInFlight) return;
     modal.hidden = true;
     if (modal === formModal) resetScheduledConfirmation();
     if ([formModal, futureModal, detailsModal, deleteModal].every((item) => item.hidden)) document.body.classList.remove('auth-modal-open');
@@ -585,7 +585,7 @@
 
   applicationForm.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!client || requestInFlight) return;
+    if (!client || formRequestInFlight) return;
     setInlineMessage(formMessage);
     const medicine = applicationForm.elements.medicine.value.trim();
     const applicationDate = applicationForm.elements.application_date.value;
@@ -614,7 +614,7 @@
       }
       const submit = applicationForm.querySelector('[type="submit"]');
       const submitLabel = document.getElementById('application-submit-label');
-      requestInFlight = true;
+      formRequestInFlight = true;
       submit.disabled = true;
       submit.classList.add('is-loading');
       submit.setAttribute('aria-busy', 'true');
@@ -634,7 +634,7 @@
       } catch (error) {
         rpcResult = { data: null, error };
       }
-      requestInFlight = false;
+      formRequestInFlight = false;
       submit.disabled = false;
       submit.classList.remove('is-loading');
       submit.removeAttribute('aria-busy');
@@ -659,8 +659,14 @@
       showToast(alreadyCompleted ? 'Esta aplicação já havia sido confirmada.' : 'Aplicação confirmada e registrada no Diário.', 'success');
       return;
     }
-    const { data: userData, error: userError } = await client.auth.getUser();
-    if (userError || !userData.user || userData.user.id !== currentUserId) {
+    let userData;
+    let userError;
+    try {
+      ({ data: userData, error: userError } = await client.auth.getUser());
+    } catch (error) {
+      userError = error;
+    }
+    if (userError || !userData?.user || userData.user.id !== currentUserId) {
       setInlineMessage(formMessage, 'Sua sessão expirou. Entre novamente.');
       return;
     }
@@ -675,7 +681,7 @@
       p_medication_vial_id: applicationForm.elements.medication_vial_id.value || null
     };
     const submit = applicationForm.querySelector('[type="submit"]');
-    requestInFlight = true;
+    formRequestInFlight = true;
     submit.disabled = true;
     submit.classList.add('is-loading');
     let result;
@@ -686,7 +692,7 @@
     }
     const persisted = Array.isArray(result.data) ? result.data[0] : result.data;
     if (result.error || !persisted?.application_id) {
-      requestInFlight = false;
+      formRequestInFlight = false;
       submit.disabled = false;
       submit.classList.remove('is-loading');
       reportTechnicalError(id ? 'falha ao atualizar aplicação' : 'falha ao registrar aplicação', result.error);
@@ -738,7 +744,7 @@
       synchronizedWeight = weightResult.data || null;
     }
     if (weightError) reportTechnicalError(id ? 'aplicação atualizada, mas houve falha ao sincronizar peso' : 'aplicação registrada, mas houve falha ao registrar peso', weightError);
-    requestInFlight = false;
+    formRequestInFlight = false;
     submit.disabled = false;
     submit.classList.remove('is-loading');
     if (weightError && id) {
@@ -760,14 +766,21 @@
   });
 
   document.getElementById('application-delete-confirm').addEventListener('click', async (event) => {
-    if (!client || requestInFlight || !selectedId) return;
+    if (!client || deleteRequestInFlight || !selectedId) return;
     const id = selectedId;
     const button = event.currentTarget;
-    requestInFlight = true;
+    deleteRequestInFlight = true;
     button.disabled = true;
-    const { data, error } = await client.from('applications').delete().eq('id', id).select('id').maybeSingle();
-    requestInFlight = false;
-    button.disabled = false;
+    let data;
+    let error;
+    try {
+      ({ data, error } = await client.from('applications').delete().eq('id', id).select('id').maybeSingle());
+    } catch (caughtError) {
+      error = caughtError;
+    } finally {
+      deleteRequestInFlight = false;
+      button.disabled = false;
+    }
     if (error || data?.id !== id) {
       reportTechnicalError('falha ao excluir aplicação', error);
       setInlineMessage(deleteMessage, friendlyDatabaseError(error, 'Não foi possível excluir a aplicação.'));

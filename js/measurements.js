@@ -32,7 +32,7 @@
     form.elements.notes.value = record?.notes || ''; document.getElementById('measurements-form-title').textContent = record ? 'Editar medidas' : 'Registrar medidas'; setMessage();
     modal.hidden = false; document.body.classList.add('auth-modal-open'); window.requestAnimationFrame(() => form.elements.record_date.focus());
   }
-  function close() { if (requestInFlight) return; modal.hidden = true; editingId = null; document.body.classList.remove('auth-modal-open'); returnFocus?.focus(); }
+  function close() { modal.hidden = true; editingId = null; document.body.classList.remove('auth-modal-open'); returnFocus?.focus(); }
 
   function card(record) {
     const article = document.createElement('article'); article.className = 'measurements-card';
@@ -55,17 +55,21 @@
 
   register.addEventListener('click', () => open(register));
   document.querySelectorAll('[data-measurements-close]').forEach((button) => button.addEventListener('click', close));
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !modal.hidden) { event.preventDefault(); close(); } });
   form.addEventListener('submit', async (event) => {
     event.preventDefault(); if (!client || requestInFlight) return; setMessage();
     const payload = { record_date: form.elements.record_date.value, notes: form.elements.notes.value.trim() || null };
     let total = 0;
     for (const field of fields) { const value = parse(form.elements[field].value); if (Number.isNaN(value)) return setMessage('Informe apenas medidas válidas maiores que zero.'); payload[field] = value; if (value !== null) total += 1; }
     if (!/^\d{4}-\d{2}-\d{2}$/u.test(payload.record_date) || total === 0) return setMessage('Informe a data e pelo menos uma medida válida.');
-    const { data: userData, error: userError } = await client.auth.getUser(); if (userError || !userData?.user || userData.user.id !== currentUserId) return setMessage('Sua sessão expirou. Entre novamente.');
-    const updating = Boolean(editingId);
+    let userData; let userError;
+    try { ({ data: userData, error: userError } = await client.auth.getUser()); } catch (error) { userError = error; }
+    if (userError || !userData?.user || userData.user.id !== currentUserId) return setMessage('Sua sessão expirou. Entre novamente.');
+    const recordId = editingId;
+    const updating = Boolean(recordId);
     requestInFlight = true; const submit = form.querySelector('[type="submit"]'); submit.disabled = true;
-    const result = updating ? await client.from('body_measurements').update(payload).eq('id', editingId).select('*').single() : await client.from('body_measurements').insert({ ...payload, user_id: userData.user.id }).select('*').single();
-    requestInFlight = false; submit.disabled = false;
+    let result;
+    try { result = updating ? await client.from('body_measurements').update(payload).eq('id', recordId).select('*').single() : await client.from('body_measurements').insert({ ...payload, user_id: userData.user.id }).select('*').single(); } catch (error) { result = { data: null, error }; } finally { requestInFlight = false; submit.disabled = false; }
     if (result.error || !result.data) return setMessage(friendly(result.error)); close(); await load(currentUserId); toast(updating ? 'Medidas atualizadas.' : 'Medidas registradas.', 'success');
   });
   if (!client) return;

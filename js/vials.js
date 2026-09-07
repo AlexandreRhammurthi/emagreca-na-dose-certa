@@ -47,6 +47,7 @@
   }
   function closeReplacement() {
     replacementModal.hidden = true;
+    if (modal.hidden) document.body.classList.remove('auth-modal-open');
     returnFocus?.focus();
   }
   function number(value) {
@@ -92,6 +93,11 @@
   createButton.addEventListener('click', () => open({ medicine: document.getElementById('application-medicine').value, trigger: createButton }));
   modal.querySelectorAll('[data-vial-close]').forEach((button) => button.addEventListener('click', close));
   replacementModal.querySelectorAll('[data-vial-replacement-close]').forEach((button) => button.addEventListener('click', closeReplacement));
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (!replacementModal.hidden) { event.preventDefault(); closeReplacement(); return; }
+    if (!modal.hidden) { event.preventDefault(); close(); }
+  });
   replacementCreate.addEventListener('click', () => { replacementModal.hidden = true; open({ medicine: pendingMedicine, trigger: replacementCreate }); });
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -102,11 +108,18 @@
     if (!medicine || !initialMg || !initialMl) { setMessage('Informe medicamento, quantidade em mg e volume em mL válidos.'); return; }
     const submit = form.querySelector('[type="submit"]');
     submit.disabled = true;
-    const { data, error } = await client.from('medication_vials').insert({
-      user_id: currentUserId, medicine, initial_mg: initialMg, initial_ml: initialMl,
-      opened_on: form.elements.opened_on.value || null, notes: form.elements.notes.value.trim() || null
-    }).select('id').single();
-    submit.disabled = false;
+    let data;
+    let error;
+    try {
+      ({ data, error } = await client.from('medication_vials').insert({
+        user_id: currentUserId, medicine, initial_mg: initialMg, initial_ml: initialMl,
+        opened_on: form.elements.opened_on.value || null, notes: form.elements.notes.value.trim() || null
+      }).select('id').single());
+    } catch (caughtError) {
+      error = caughtError;
+    } finally {
+      submit.disabled = false;
+    }
     if (error || !data?.id) { setMessage('Não foi possível salvar este frasco. Tente novamente.'); console.error('Frascos: falha ao salvar.', { code: error?.code || 'unknown' }); return; }
     await loadActive({ selectedId: data.id, medicine: pendingMedicine || medicine });
     close();

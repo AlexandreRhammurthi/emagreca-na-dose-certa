@@ -101,7 +101,12 @@
   document.getElementById('onboarding-close').addEventListener('click', close);
   cancel.addEventListener('click', () => { close(); window.showToast?.('Você pode concluir seu perfil quando quiser.', 'info'); });
   modal.querySelector('.auth-backdrop').addEventListener('click', close);
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !modal.hidden && !state.loading) close(); });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const accountDeleteModal = document.getElementById('account-delete-modal');
+    if (!accountDeleteModal.hidden) { event.preventDefault(); accountDeleteModal.hidden = true; return; }
+    if (!modal.hidden) { event.preventDefault(); close(); }
+  });
   form.elements.gender.addEventListener('change', toggleConditional); form.elements.medicine.addEventListener('change', toggleConditional); form.elements.application_interval_days.addEventListener('input', updateInterval);
   next.addEventListener('click', () => { if (validStep(state.step)) setStep(state.step + 1); }); back.addEventListener('click', () => setStep(state.step - 1)); form.addEventListener('submit', save);
   document.getElementById('onboarding-delete-open').addEventListener('click', () => { document.getElementById('account-delete-modal').hidden = false; close(); }); document.querySelectorAll('[data-account-delete-close]').forEach((item) => item.addEventListener('click', () => { document.getElementById('account-delete-modal').hidden = true; })); document.getElementById('account-delete-form').addEventListener('submit', deleteAccount);
