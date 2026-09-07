@@ -11,6 +11,8 @@
   const toastRegion = document.getElementById('toast-region');
   let returnFocus = null;
   let recoveryMode = false;
+  let signupGateActive = false;
+  let currentUser = null;
   let activeRequest = false;
   let toastExitTimer = null;
   let toastRemoveTimer = null;
@@ -97,7 +99,7 @@
   }
 
   function closeModal() {
-    if (activeRequest || recoveryMode) return;
+    if (activeRequest || recoveryMode || signupGateActive) return;
     modal.hidden = true;
     document.body.classList.remove('auth-modal-open');
     returnFocus?.focus();
@@ -105,6 +107,8 @@
 
   function renderSession(session) {
     const user = session?.user;
+    currentUser = user || null;
+    if (user) signupGateActive = false;
     guest.hidden = Boolean(user);
     authenticated.hidden = !user;
     if (user) {
@@ -113,7 +117,16 @@
     } else {
       displayName.textContent = '';
     }
+    document.dispatchEvent(new CustomEvent('dosecerta:auth-session', { detail: { user: currentUser } }));
   }
+
+  function openSignupGate() {
+    if (currentUser || !modal.hidden) return;
+    signupGateActive = true;
+    openModal('signup');
+    modal.querySelector('[data-auth-view="signup"] .auth-subtitle').textContent = 'Crie sua conta gratuita para acompanhar seu progresso e agendar lembretes de acordo com a indicação médica.';
+  }
+  window.openOnboardingSignupGate = openSignupGate;
 
   function validEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -201,12 +214,16 @@
     const email = form.elements.email.value.trim();
     const password = form.elements.password.value;
     const confirm = form.elements.confirm.value;
+    const adultConfirmation = form.elements.adult_confirmation.checked;
+    const legalAcceptance = form.elements.legal_acceptance.checked;
     clearMessages();
     const valid = [
       validate(form.elements.name, Boolean(name)),
       validate(form.elements.email, validEmail(email)),
       validate(form.elements.password, password.length >= 6),
-      validate(form.elements.confirm, password === confirm && Boolean(confirm))
+      validate(form.elements.confirm, password === confirm && Boolean(confirm)),
+      validate(form.elements.adult_confirmation, adultConfirmation),
+      validate(form.elements.legal_acceptance, legalAcceptance)
     ].every(Boolean);
     if (!valid) {
       setMessage('signup-message', password !== confirm ? 'As senhas não coincidem.' : 'Preencha os campos corretamente.');
@@ -229,10 +246,12 @@
       return;
     }
     if (!data.session) {
+      signupGateActive = false;
       setMessage('signup-message', 'Cadastro realizado. Verifique seu e-mail para confirmar sua conta.', true);
       return;
     }
     form.reset();
+    signupGateActive = false;
     renderSession(data.session);
     modal.hidden = true;
     document.body.classList.remove('auth-modal-open');

@@ -15,7 +15,11 @@ const publicFiles = Object.freeze([
   'js/weight.js',
   'js/plan.js',
   'js/google-calendar.js',
+  'js/onboarding.js',
   'js/supabase-config.js',
+  'privacy.html',
+  'project-delivery-pipeline.html',
+  'terms.html',
   'assets/icons/application-vial.png',
   'assets/icons/weight-syringe.png',
   'assets/icons/weight-scale.png'

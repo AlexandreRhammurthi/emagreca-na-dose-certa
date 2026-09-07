@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pipeline de Entrega — Dose Certa</title>
+  <style>
+    :root{--ink:#173e3b;--muted:#667a77;--teal:#18aa91;--mint:#e9f7f3;--cream:#f6f5ef;--line:#dce5e1;--white:#fff;--warn:#a96c1f}*{box-sizing:border-box}body{margin:0;background:var(--cream);color:var(--ink);font-family:Arial,sans-serif}.shell{max-width:1180px;margin:auto;padding:42px 24px 70px}.hero{padding:31px;border-radius:24px;background:linear-gradient(135deg,#173e3b,#255c56);color:#fff}.eyebrow{margin:0 0 9px;color:#8ee4d4;font-size:11px;font-weight:800;letter-spacing:.16em}.hero h1{margin:0;font-size:clamp(30px,5vw,49px);letter-spacing:-.04em}.hero p{max-width:690px;margin:14px 0 0;color:#d0e4df;line-height:1.6}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0}.metric,.sprint,.gate{border:1px solid var(--line);border-radius:16px;background:var(--white)}.metric{padding:18px}.metric b{display:block;color:var(--teal);font-size:27px}.metric span{color:var(--muted);font-size:12px}.section-title{margin:38px 0 13px;font-size:23px}.timeline{display:grid;gap:12px}.sprint{display:grid;grid-template-columns:115px 1fr auto;gap:18px;align-items:center;padding:18px}.date{color:var(--teal);font-size:11px;font-weight:800;letter-spacing:.07em}.sprint h2{margin:0;font-size:17px}.sprint p{margin:5px 0 0;color:var(--muted);font-size:13px;line-height:1.45}.status{padding:7px 10px;border-radius:99px;background:var(--mint);color:#176b5d;font-size:11px;font-weight:800}.status.next{background:#fff4db;color:var(--warn)}.status.future{background:#edf1ef;color:#667a77}.gates{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.gate{padding:18px}.gate h3{margin:0 0 8px;font-size:15px}.gate p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}.checklist{margin:13px 0 0;padding:0;list-style:none}.checklist li{display:flex;gap:8px;margin:8px 0;color:#42605b;font-size:12px}.checklist input{accent-color:var(--teal)}.notice{margin-top:28px;padding:16px 18px;border-left:4px solid var(--teal);background:#edf8f5;color:#315d55;font-size:13px;line-height:1.55}@media(max-width:720px){.metrics,.gates{grid-template-columns:1fr}.sprint{grid-template-columns:1fr;gap:9px}.status{justify-self:start}.shell{padding:24px 14px 50px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero"><p class="eyebrow">DOSE CERTA · GESTÃO DE PRODUTO</p><h1>Pipeline de entrega</h1><p>Cronograma de evolução da plataforma, com entregas pequenas, validação técnica e autorização explícita antes de qualquer publicação.</p></section>
+    <section class="metrics"><article class="metric"><b>6</b><span>Sprints planejadas</span></article><article class="metric"><b>06/09</b><span>Início do ciclo</span></article><article class="metric"><b>7 dias</b><span>Monitoramento pós-release</span></article></section>
+    <h2 class="section-title">Cronograma do projeto</h2>
+    <section class="timeline">
+      <article class="sprint"><span class="date">06–17 SET</span><div><h2>Sprint 1 · Onboarding V1</h2><p>Cadastro, perfil de jornada, consentimentos, exclusão permanente e documentos de privacidade.</p></div><span class="status">Implementada localmente</span></article>
+      <article class="sprint"><span class="date">18–24 SET</span><div><h2>Sprint 2 · Migration e RLS</h2><p>Revisão, execução controlada, matriz de isolamento e validação da exclusão de conta.</p></div><span class="status next">Em preparação</span></article>
+      <article class="sprint"><span class="date">25 SET–01 OUT</span><div><h2>Sprint 3 · Dados e métricas</h2><p>Funil de ativação e eventos de produto sem dados clínicos.</p></div><span class="status future">Planejada</span></article>
+      <article class="sprint"><span class="date">02–16 OUT</span><div><h2>Sprint 4 · Premium discovery</h2><p>Página Premium, lista de espera, entrevistas e hipótese de preço.</p></div><span class="status future">Planejada</span></article>
+      <article class="sprint"><span class="date">17–30 OUT</span><div><h2>Sprint 5 · Assinaturas e relatórios</h2><p>Entitlements, checkout, período de teste e relatórios pessoais.</p></div><span class="status future">Planejada</span></article>
+      <article class="sprint"><span class="date">31 OUT–13 NOV</span><div><h2>Sprint 6 · Produto Profissional</h2><p>Pesquisa, consentimento paciente-profissional e protótipo de convite.</p></div><span class="status future">Planejada</span></article>
+    </section>
+    <h2 class="section-title">Gates obrigatórios</h2>
+    <section class="gates">
+      <article class="gate"><h3>1. Arquitetura</h3><p>Schema, RLS, UX e impacto nos dados existentes revisados antes de codificar.</p><ul class="checklist"><li><input type="checkbox" /> Migration revisada</li><li><input type="checkbox" /> Riscos registrados</li></ul></article>
+      <article class="gate"><h3>2. Qualidade</h3><p>Build, testes, segurança e validação mobile concluídos localmente.</p><ul class="checklist"><li><input type="checkbox" /> Build verde</li><li><input type="checkbox" /> RLS validada</li></ul></article>
+      <article class="gate"><h3>3. Publicação</h3><p>Commit, push, migration e deploy acontecem apenas com autorização explícita.</p><ul class="checklist"><li><input type="checkbox" /> Evidências aprovadas</li><li><input type="checkbox" /> Pós-release agendado</li></ul></article>
+    </section>
+    <p class="notice">Próximo marco: revisar a migration de Onboarding V1, confirmar seu impacto no Supabase e executar a matriz RLS somente após autorização para alterar o banco.</p>
+  </main>
+</body>
+</html>
