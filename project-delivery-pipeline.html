@@ -11,15 +11,17 @@
 <body>
   <main class="shell">
     <section class="hero"><p class="eyebrow">DOSE CERTA · GESTÃO DE PRODUTO</p><h1>Pipeline de entrega</h1><p>Cronograma de evolução da plataforma, com entregas pequenas, validação técnica e autorização explícita antes de qualquer publicação.</p></section>
-    <section class="metrics"><article class="metric"><b>6</b><span>Sprints planejadas</span></article><article class="metric"><b>06/09</b><span>Início do ciclo</span></article><article class="metric"><b>7 dias</b><span>Monitoramento pós-release</span></article></section>
+    <section class="metrics"><article class="metric"><b>9</b><span>Sprints planejadas</span></article><article class="metric"><b>06/09</b><span>Início do ciclo</span></article><article class="metric"><b>7 dias</b><span>Monitoramento pós-release</span></article></section>
     <h2 class="section-title">Cronograma do projeto</h2>
     <section class="timeline">
-      <article class="sprint"><span class="date">06–17 SET</span><div><h2>Sprint 1 · Onboarding V1</h2><p>Cadastro, perfil de jornada, consentimentos, exclusão permanente e documentos de privacidade.</p></div><span class="status">Implementada localmente</span></article>
-      <article class="sprint"><span class="date">18–24 SET</span><div><h2>Sprint 2 · Migration e RLS</h2><p>Revisão, execução controlada, matriz de isolamento e validação da exclusão de conta.</p></div><span class="status next">Em preparação</span></article>
-      <article class="sprint"><span class="date">25 SET–01 OUT</span><div><h2>Sprint 3 · Dados e métricas</h2><p>Funil de ativação e eventos de produto sem dados clínicos.</p></div><span class="status future">Planejada</span></article>
-      <article class="sprint"><span class="date">02–16 OUT</span><div><h2>Sprint 4 · Premium discovery</h2><p>Página Premium, lista de espera, entrevistas e hipótese de preço.</p></div><span class="status future">Planejada</span></article>
-      <article class="sprint"><span class="date">17–30 OUT</span><div><h2>Sprint 5 · Assinaturas e relatórios</h2><p>Entitlements, checkout, período de teste e relatórios pessoais.</p></div><span class="status future">Planejada</span></article>
-      <article class="sprint"><span class="date">31 OUT–13 NOV</span><div><h2>Sprint 6 · Produto Profissional</h2><p>Pesquisa, consentimento paciente-profissional e protótipo de convite.</p></div><span class="status future">Planejada</span></article>
+      <article class="sprint"><span class="date">06–17 SET</span><div><h2>Sprint 1 · Onboarding V1</h2><p>Cadastro, perfil, consentimentos e exclusão permanente.</p></div><span class="status">Publicada</span></article>
+      <article class="sprint"><span class="date">08–12 SET</span><div><h2>Sprint 2A · Dados e métricas</h2><p>Eventos mínimos sem dados de saúde; coleta ativada após a revisão de Privacidade.</p></div><span class="status">Publicada</span></article>
+      <article class="sprint"><span class="date">15–26 SET</span><div><h2>Sprint 3 · Lembretes e rodízio</h2><p>Aplicação, pré-lembrete de 15 min e sugestão configurável de local.</p></div><span class="status">Publicada</span></article>
+      <article class="sprint"><span class="date">29 SET–10 OUT</span><div><h2>Sprint 4 · Duração do frasco</h2><p>Inventário por mg e mL, saldo e retirada atômica opcional por aplicação.</p></div><span class="status">Publicada</span></article>
+      <article class="sprint"><span class="date">13–24 OUT</span><div><h2>Sprint 5 · Medidas corporais</h2><p>Peso, circunferências e evolução visual.</p></div><span class="status">Publicada</span></article>
+      <article class="sprint"><span class="date">27 OUT–07 NOV</span><div><h2>Sprint 6 · Relatório PDF pessoal</h2><p>Exportação explícita de histórico e gráficos para consulta.</p></div><span class="status">Publicada</span></article>
+      <article class="sprint"><span class="date">10–14 NOV</span><div><h2>Sprint 2B · Métricas controladas</h2><p>Ativação protegida por JWT e Política de Privacidade atualizada.</p></div><span class="status">Publicada</span></article>
+      <article class="sprint"><span class="date">17 NOV–05 DEZ</span><div><h2>Sprints 7–8 · Premium</h2><p>Discovery, lista de espera, assinatura e período de teste.</p></div><span class="status future">Planejada</span></article>
     </section>
     <h2 class="section-title">Gates obrigatórios</h2>
     <section class="gates">
@@ -27,7 +29,7 @@
       <article class="gate"><h3>2. Qualidade</h3><p>Build, testes, segurança e validação mobile concluídos localmente.</p><ul class="checklist"><li><input type="checkbox" /> Build verde</li><li><input type="checkbox" /> RLS validada</li></ul></article>
       <article class="gate"><h3>3. Publicação</h3><p>Commit, push, migration e deploy acontecem apenas com autorização explícita.</p><ul class="checklist"><li><input type="checkbox" /> Evidências aprovadas</li><li><input type="checkbox" /> Pós-release agendado</li></ul></article>
     </section>
-    <p class="notice">Próximo marco: revisar a migration de Onboarding V1, confirmar seu impacto no Supabase e executar a matriz RLS somente após autorização para alterar o banco.</p>
+    <p class="notice">Auditoria geral concluída em 07/09/2026: cópia de segurança, testes, build, integridade e publicação registrados. Próximo marco: Premium Discovery, dependente de decisões de proposta de valor e preço.</p>
   </main>
 </body>
 </html>

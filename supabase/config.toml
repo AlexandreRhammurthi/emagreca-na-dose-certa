@@ -9,3 +9,6 @@ verify_jwt = true
 
 [functions.delete-account]
 verify_jwt = true
+
+[functions.record-product-event]
+verify_jwt = true

@@ -408,6 +408,7 @@
             <p>Seu histórico de peso em um só lugar.</p>
           </div>
           <button class="primary-action" id="weight-register" type="button">+ Registrar peso</button>
+          <button class="secondary-action" id="report-export" type="button">Exportar relatório PDF</button>
         </div>
         <article class="weight-summary-card" aria-labelledby="weight-evolution-title">
           <div class="weight-summary-heading">
@@ -428,6 +429,15 @@
           <div class="weight-list" id="weight-list"></div>
           <button class="secondary-action weight-details-close" id="weight-details-close" type="button">Fechar detalhes</button>
         </div>
+        <section class="measurements-panel" aria-labelledby="measurements-title">
+          <div class="weight-summary-heading"><div><p class="eyebrow">ACOMPANHAMENTO</p><h3 id="measurements-title">Medidas corporais</h3><p>Registre circunferências para acompanhar sua evolução pessoal.</p></div><button class="secondary-action" id="measurements-register" type="button">+ Registrar medidas</button></div>
+          <div class="diary-status" id="measurements-status" role="status" aria-live="polite">Carregando medidas...</div>
+          <div class="measurements-list" id="measurements-list"></div>
+        </section>
+        <section class="measurements-panel" aria-labelledby="effects-title">
+          <div class="weight-summary-heading"><div><p class="eyebrow">ACOMPANHAMENTO</p><h3 id="effects-title">Efeitos relatados</h3><p>Anotações pessoais para incluir no seu relatório quando desejar.</p></div><button class="secondary-action" id="effects-register" type="button">+ Registrar anotação</button></div>
+          <div class="diary-status" id="effects-status" role="status" aria-live="polite">Carregando anotações...</div><div class="measurements-list" id="effects-list"></div>
+        </section>
       </section>
 
       <section class="diary-section plan-section" id="plan-section" aria-labelledby="plan-title" hidden>
@@ -501,6 +511,7 @@
           <div class="diary-form-grid">
             <label class="auth-field">Medicamento<input class="auth-input" id="application-medicine" name="medicine" type="text" maxlength="100" required /></label>
             <label class="auth-field">Data da aplicação<input class="auth-input" id="application-date" name="application_date" type="date" required /></label>
+            <label class="auth-field">Frasco usado <small class="optional-label">Opcional</small><select class="auth-input" id="application-medication-vial" name="medication_vial_id"><option value="">Não vincular a um frasco</option></select><button class="inline-link" id="application-vial-create" type="button">Cadastrar novo frasco</button></label>
             <label class="auth-field" id="application-weight-field">Peso no momento da aplicação (kg) <small class="optional-label">Opcional</small><input class="auth-input" id="application-weight" name="weight_kg" type="text" inputmode="decimal" maxlength="7" placeholder="Ex.: 92,5" /></label>
             <label class="auth-field">Quantidade no frasco (mg)<input class="auth-input" id="application-vial-mg" name="vial_mg" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
             <label class="auth-field">Volume do frasco (mL)<input class="auth-input" id="application-vial-ml" name="vial_ml" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label>
@@ -624,8 +635,10 @@
             <legend>Lembretes</legend>
             <label><input name="reminders" type="checkbox" value="1440" checked /><span>1 dia antes</span></label>
             <label><input name="reminders" type="checkbox" value="120" checked /><span>2 horas antes</span></label>
+            <label><input name="reminders" type="checkbox" value="15" checked /><span>15 min antes · retire da geladeira</span></label>
             <label><input name="reminders" type="checkbox" value="0" checked /><span>No horário</span></label>
           </fieldset>
+          <p class="plan-rotation-suggestion" id="plan-rotation-suggestion" role="status"></p>
           <label class="auth-field" for="plan-notes">Observação opcional</label>
           <textarea class="auth-input diary-notes" id="plan-notes" name="notes" maxlength="500" rows="4"></textarea>
           <div class="auth-message" id="plan-form-message" role="alert" hidden></div>
@@ -726,6 +739,51 @@
         </div>
       </section>
     </div>
+
+    <div class="diary-modal" id="medication-vial-modal" hidden>
+      <div class="diary-backdrop" data-vial-close></div>
+      <section class="diary-dialog diary-dialog-small" role="dialog" aria-modal="true" aria-labelledby="medication-vial-title" tabindex="-1">
+        <button class="auth-close" type="button" data-vial-close aria-label="Fechar cadastro de frasco">×</button>
+        <p class="auth-eyebrow">MEUS FRASCOS</p><h2 id="medication-vial-title">Cadastrar novo frasco</h2>
+        <p class="auth-subtitle">Informe o total indicado no rótulo. O saldo será calculado a partir das aplicações vinculadas.</p>
+        <form id="medication-vial-form" novalidate>
+          <label class="auth-field">Medicamento<input class="auth-input" name="medicine" type="text" maxlength="100" required /></label>
+          <div class="diary-form-grid"><label class="auth-field">Quantidade no frasco (mg)<input class="auth-input" name="initial_mg" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label><label class="auth-field">Volume total no frasco (mL)<input class="auth-input" name="initial_ml" type="number" min="0.01" step="0.01" inputmode="decimal" required /></label></div>
+          <label class="auth-field">Data de início <small class="optional-label">Opcional</small><input class="auth-input" name="opened_on" type="date" /></label>
+          <label class="auth-field">Observação <small class="optional-label">Opcional</small><textarea class="auth-input diary-notes" name="notes" maxlength="500" rows="3"></textarea></label>
+          <div class="auth-message" id="medication-vial-message" role="alert" hidden></div>
+          <div class="dialog-actions"><button class="secondary-action" type="button" data-vial-close>Cancelar</button><button class="primary-action" type="submit">Salvar frasco</button></div>
+        </form>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="medication-vial-replacement-modal" hidden>
+      <div class="diary-backdrop" data-vial-replacement-close></div>
+      <section class="diary-dialog diary-dialog-small" role="alertdialog" aria-modal="true" aria-labelledby="vial-replacement-title" tabindex="-1">
+        <p class="auth-eyebrow">SALDO DO FRASCO</p><h2 id="vial-replacement-title">Este frasco terminou?</h2>
+        <p class="auth-subtitle">A dose informada é maior que o saldo disponível. Você começou um novo frasco?</p>
+        <div class="dialog-actions"><button class="secondary-action" type="button" data-vial-replacement-close>Agora não</button><button class="primary-action" id="vial-replacement-create" type="button">Cadastrar novo frasco</button></div>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="measurements-form-modal" hidden>
+      <div class="diary-backdrop" data-measurements-close></div>
+      <section class="diary-dialog" role="dialog" aria-modal="true" aria-labelledby="measurements-form-title" tabindex="-1">
+        <button class="auth-close" type="button" data-measurements-close aria-label="Fechar registro de medidas">×</button><p class="auth-eyebrow">MEDIDAS CORPORAIS</p><h2 id="measurements-form-title">Registrar medidas</h2><p class="auth-subtitle">Preencha ao menos uma medida. Todas são opcionais.</p>
+        <form id="measurements-form" novalidate>
+          <label class="auth-field">Data<input class="auth-input" name="record_date" type="date" required /></label>
+          <div class="measurements-grid">
+            <label class="auth-field">Abdômen (cm)<input class="auth-input" name="abdominal_cm" inputmode="decimal" placeholder="Ex.: 92,5" /></label><label class="auth-field">Cintura (cm)<input class="auth-input" name="waist_cm" inputmode="decimal" /></label>
+            <label class="auth-field">Braço esquerdo (cm)<input class="auth-input" name="upper_arm_left_cm" inputmode="decimal" /></label><label class="auth-field">Braço direito (cm)<input class="auth-input" name="upper_arm_right_cm" inputmode="decimal" /></label>
+            <label class="auth-field">Coxa esquerda (cm)<input class="auth-input" name="thigh_left_cm" inputmode="decimal" /></label><label class="auth-field">Coxa direita (cm)<input class="auth-input" name="thigh_right_cm" inputmode="decimal" /></label>
+            <label class="auth-field">Panturrilha esquerda (cm)<input class="auth-input" name="calf_left_cm" inputmode="decimal" /></label><label class="auth-field">Panturrilha direita (cm)<input class="auth-input" name="calf_right_cm" inputmode="decimal" /></label>
+          </div>
+          <label class="auth-field">Observação <small class="optional-label">Opcional</small><textarea class="auth-input diary-notes" name="notes" maxlength="500" rows="3"></textarea></label>
+          <div class="auth-message" id="measurements-message" role="alert" hidden></div><div class="dialog-actions"><button class="secondary-action" type="button" data-measurements-close>Cancelar</button><button class="primary-action" type="submit">Salvar medidas</button></div>
+        </form>
+      </section>
+    </div>
+    <div class="diary-modal" id="effects-form-modal" hidden><div class="diary-backdrop" data-effects-close></div><section class="diary-dialog diary-dialog-small" role="dialog" aria-modal="true" aria-labelledby="effects-form-title" tabindex="-1"><button class="auth-close" type="button" data-effects-close aria-label="Fechar anotação">×</button><p class="auth-eyebrow">EFEITOS RELATADOS</p><h2 id="effects-form-title">Registrar anotação</h2><form id="effects-form" novalidate><label class="auth-field">Data<input class="auth-input" name="record_date" type="date" required /></label><label class="auth-field">Anotação<textarea class="auth-input diary-notes" name="note" maxlength="1000" rows="5" required></textarea></label><div class="auth-message" id="effects-message" role="alert" hidden></div><div class="dialog-actions"><button class="secondary-action" type="button" data-effects-close>Cancelar</button><button class="primary-action" type="submit">Salvar anotação</button></div></form></section></div>
     <div class="auth-modal onboarding-modal" id="onboarding-modal" hidden>
       <div class="auth-backdrop"></div>
       <section class="auth-dialog onboarding-dialog" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" tabindex="-1">
@@ -745,7 +803,7 @@
             <label class="auth-field">Objetivo principal<select class="auth-input" name="journey_goal" required><option value="" selected disabled>Selecione seu objetivo</option><option value="weight_loss">Perder peso</option><option value="maintenance">Manter peso</option><option value="treatment_tracking">Acompanhar tratamento</option><option value="other">Outro</option></select></label><p class="auth-hint">Seu peso atual será salvo como a primeira medição do histórico.</p>
           </div>
           <div class="onboarding-step" data-step="3" hidden>
-            <h3>Tratamento e rotina</h3><label class="auth-field">Medicamento principal<select class="auth-input" name="medicine" required><option value="" selected disabled>Selecione o medicamento</option><option value="tirzepatida">Tirzepatida</option><option value="semaglutida">Semaglutida</option><option value="other">Outro</option></select></label><label class="auth-field" id="medicine-other-field" hidden>Informe o medicamento<input class="auth-input" name="medicine_other" type="text" maxlength="100" /></label>
+            <h3>Tratamento e rotina</h3><label class="auth-field">Medicamento principal<select class="auth-input" name="medicine" required><option value="" selected disabled>Selecione o medicamento</option><option value="tirzepatida">Tirzepatida</option><option value="semaglutida">Semaglutida</option><option value="dulaglutida">Dulaglutida</option><option value="exenatida">Exenatida</option><option value="liraglutida">Liraglutida</option><option value="lixisenatida">Lixisenatida</option><option value="other">Outro</option></select></label><label class="auth-field" id="medicine-other-field" hidden>Informe o medicamento<input class="auth-input" name="medicine_other" type="text" maxlength="100" /></label>
             <label class="auth-field">Intervalo da aplicação <output id="interval-output">A cada 7 dias</output><input class="range-input" name="application_interval_days" type="range" min="1" max="30" value="7" /></label><label class="auth-field">Melhor horário para te lembrar da sua aplicação?<input class="auth-input" name="reminder_time" type="time" value="09:00" required /></label><label class="consent-choice"><input name="google_calendar_opt_in" type="checkbox" /> Usar o Google Agenda para criar os lembretes.</label><label class="consent-choice"><input name="health_data_consent" type="checkbox" required /> Autorizo o uso destes dados para personalizar minha experiência, conforme a Política de Privacidade.</label>
           </div>
           <div class="auth-message" id="onboarding-message" role="alert" hidden></div><div class="dialog-actions"><button class="secondary-action" id="onboarding-back" type="button" hidden>Voltar</button><button class="primary-action" id="onboarding-next" type="button">Continuar</button><button class="primary-action" id="onboarding-submit" type="submit" hidden>Concluir perfil</button></div>
@@ -756,9 +814,14 @@
     <script src="app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/supabase-config.js"></script>
+    <script src="js/analytics.js"></script>
     <script src="js/auth.js"></script>
+    <script src="js/vials.js"></script>
     <script src="js/diary.js"></script>
     <script src="js/weight.js"></script>
+    <script src="js/measurements.js"></script>
+    <script src="js/report.js"></script>
+    <script src="js/effects.js"></script>
     <script src="js/plan.js"></script>
     <script type="module" src="js/google-calendar.js"></script>
     <script src="js/onboarding.js"></script>

@@ -68,6 +68,8 @@
     const text = String(error?.message || '').toLowerCase();
     if (text.includes('jwt') || text.includes('session')) return 'Sua sessão expirou. Entre novamente.';
     if (text.includes('fetch') || text.includes('network')) return 'Não foi possível conectar. Verifique sua internet.';
+    if (text.includes('selected vial does not have enough')) return 'Este frasco não tem saldo para esta dose. Cadastre e selecione um novo frasco.';
+    if (text.includes('selected vial is not available')) return 'O frasco selecionado não está mais disponível. Escolha outro ou cadastre um novo.';
     return fallback;
   }
 
@@ -189,6 +191,7 @@
     applicationForm.elements.syringe_capacity.value = String(data.syringe_capacity);
     applicationForm.elements.notes.value = data.notes || '';
     applicationForm.elements.weight_kg.value = formatWeightInput(associatedWeight?.weight_kg);
+    applicationForm.elements.medication_vial_id.value = '';
     document.getElementById('application-weight-field').hidden = false;
     document.getElementById('application-form-title').textContent = editing ? 'Editar aplicação' : 'Registrar aplicação';
     document.getElementById('application-submit-label').textContent = editing ? 'Salvar alterações' : 'Registrar aplicação';
@@ -217,6 +220,7 @@
       application_date: todayCivil(),
       notes: ''
     }, false, simulation);
+    window.MedicationVials?.loadActive({ medicine: simulation.medicine });
     openModal(formModal, trigger);
   }
 
@@ -245,6 +249,7 @@
     document.getElementById('application-form-title').textContent = 'Confirmar aplicação';
     document.getElementById('application-form-subtitle').textContent = 'Confira os dados da aplicação realizada antes de registrar.';
     document.getElementById('application-submit-label').textContent = 'Confirmar aplicação';
+    window.MedicationVials?.loadActive({ medicine: String(data.medicine).trim() });
     if (data.scheduledDate > todayCivil()) {
       setInlineMessage(formMessage, 'Esta aplicação está agendada para uma data futura. Informe hoje ou uma data passada como data real.');
     }
@@ -547,6 +552,8 @@
     const originalTrigger = modalReturnFocus.get(detailsModal);
     closeModal(detailsModal, false);
     fillForm(record, true, null, weightLookup.record);
+    const linkedVialId = await window.MedicationVials?.getApplicationVialId(record.id);
+    await window.MedicationVials?.loadActive({ selectedId: linkedVialId, medicine: record.medicine });
     openModal(formModal, originalTrigger);
   });
 
@@ -621,7 +628,8 @@
           p_vial_ml: calculation.vialMl,
           p_syringe_capacity: calculation.syringeCapacity,
           p_weight_kg: weightKg,
-          p_application_notes: applicationForm.elements.notes.value.trim()
+          p_application_notes: applicationForm.elements.notes.value.trim(),
+          p_medication_vial_id: applicationForm.elements.medication_vial_id.value || null
         });
       } catch (error) {
         rpcResult = { data: null, error };
@@ -656,44 +664,42 @@
       setInlineMessage(formMessage, 'Sua sessão expirou. Entre novamente.');
       return;
     }
-    const payload = {
-      application_date: applicationDate,
-      medicine,
-      vial_mg: calculation.vialMg,
-      vial_ml: calculation.vialMl,
-      dose_mg: calculation.doseMg,
-      volume_ml: calculation.volumeMl,
-      units: calculation.units,
-      syringe_capacity: calculation.syringeCapacity,
-      notes: applicationForm.elements.notes.value.trim()
+    const rpcArgs = {
+      p_application_date: applicationDate,
+      p_medicine: medicine,
+      p_vial_mg: calculation.vialMg,
+      p_vial_ml: calculation.vialMl,
+      p_dose_mg: calculation.doseMg,
+      p_syringe_capacity: calculation.syringeCapacity,
+      p_application_notes: applicationForm.elements.notes.value.trim(),
+      p_medication_vial_id: applicationForm.elements.medication_vial_id.value || null
     };
     const submit = applicationForm.querySelector('[type="submit"]');
     requestInFlight = true;
     submit.disabled = true;
     submit.classList.add('is-loading');
     let result;
-    if (id) {
-      result = await client.from('applications').update(payload).eq('id', id).select('*').single();
-    } else {
-      result = await client.from('applications').insert({
-        ...payload,
-        user_id: userData.user.id,
-        source: 'simulator',
-        calculation_version: 1
-      }).select('*').single();
+    try {
+      result = await client.rpc(id ? 'update_application_with_optional_vial' : 'create_application_with_optional_vial', id ? { p_application_id: id, ...rpcArgs } : rpcArgs);
+    } catch (error) {
+      result = { data: null, error };
     }
-    if (result.error || !result.data) {
+    const persisted = Array.isArray(result.data) ? result.data[0] : result.data;
+    if (result.error || !persisted?.application_id) {
       requestInFlight = false;
       submit.disabled = false;
       submit.classList.remove('is-loading');
       reportTechnicalError(id ? 'falha ao atualizar aplicação' : 'falha ao registrar aplicação', result.error);
       setInlineMessage(formMessage, friendlyDatabaseError(result.error, id ? 'Não foi possível atualizar a aplicação.' : 'Não foi possível registrar a aplicação.'));
+      if (String(result.error?.message || '').toLowerCase().includes('selected vial does not have enough')) {
+        window.MedicationVials?.offerReplacement({ medicine, trigger: submit });
+      }
       return;
     }
     let weightError = null;
     let synchronizedWeight = null;
     const existingWeight = id ? associatedWeights.get(id) || null : null;
-    const applicationId = result.data.id;
+    const applicationId = persisted.application_id;
     if (existingWeight && weightKg === null) {
       if (existingWeight.application_id !== applicationId) {
         const linkResult = await client.from('weight_records').update({
@@ -736,7 +742,6 @@
     submit.disabled = false;
     submit.classList.remove('is-loading');
     if (weightError && id) {
-      records.set(id, result.data);
       setInlineMessage(formMessage, 'A aplicação foi atualizada, mas não foi possível sincronizar o peso. Tente salvar novamente.');
       return;
     }

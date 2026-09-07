@@ -84,6 +84,7 @@
     state.loading = false; submit.disabled = false;
     if (consentError) { show(message, 'Seu perfil foi salvo, mas não foi possível registrar os consentimentos. Tente novamente.'); return; }
     state.profile = profile; close(); window.showToast?.('Perfil concluído com sucesso.', 'success');
+    window.DoseAnalytics?.onboardingCompleted();
     if (payload.google_calendar_opt_in) window.showToast?.('Você poderá conectar o Google Agenda em Meu Plano.', 'info');
   }
   async function deleteAccount(event) {

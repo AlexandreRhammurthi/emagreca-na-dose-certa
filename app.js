@@ -6,6 +6,10 @@ let currentSimulation = null;
 const medicines = Object.freeze([
   Object.freeze({ value: 'tirzepatida', label: 'Tirzepatida' }),
   Object.freeze({ value: 'semaglutida', label: 'Semaglutida' }),
+  Object.freeze({ value: 'dulaglutida', label: 'Dulaglutida' }),
+  Object.freeze({ value: 'exenatida', label: 'Exenatida' }),
+  Object.freeze({ value: 'liraglutida', label: 'Liraglutida' }),
+  Object.freeze({ value: 'lixisenatida', label: 'Lixisenatida' }),
   Object.freeze({ value: 'outro', label: 'Outro medicamento' })
 ]);
 

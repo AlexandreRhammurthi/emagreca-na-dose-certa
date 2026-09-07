@@ -253,6 +253,7 @@
     form.reset();
     signupGateActive = false;
     renderSession(data.session);
+    document.dispatchEvent(new CustomEvent('dosecerta:account-created'));
     modal.hidden = true;
     document.body.classList.remove('auth-modal-open');
   });

@@ -23,8 +23,16 @@
   const cancelConfirmButton = document.getElementById('plan-cancel-confirm');
   const planFields = 'id,user_id,medicine,dose_mg,start_date,frequency_type,frequency_interval,time_of_day,timezone,default_reminder_minutes,active,created_at,updated_at';
   const occurrenceFields = 'id,user_id,plan_id,scheduled_date,scheduled_time,timezone,status,reminder_minutes,notes,google_sync_status,created_at,updated_at';
+  const siteFields = 'id,user_id,application_id,scheduled_application_id,site_code,site_other,recorded_at,created_at';
+  const rotationSites = ['abdomen_left', 'abdomen_right', 'thigh_left', 'thigh_right', 'arm_left', 'arm_right'];
+  const siteLabels = {
+    abdomen_left: 'Abdômen esquerdo', abdomen_right: 'Abdômen direito',
+    thigh_left: 'Coxa esquerda', thigh_right: 'Coxa direita',
+    arm_left: 'Braço esquerdo', arm_right: 'Braço direito', other: 'Outro local'
+  };
   const plans = new Map();
   const occurrences = new Map();
+  const siteRecords = new Map();
   const modalReturnFocus = new Map();
   let currentUserId = null;
   let requestInFlight = false;
@@ -169,6 +177,45 @@
       || String(first.created_at || '').localeCompare(String(second.created_at || ''));
   }
 
+  function siteLabel(record) {
+    if (!record) return '';
+    return record.site_code === 'other' ? String(record.site_other || siteLabels.other) : (siteLabels[record.site_code] || 'Local não informado');
+  }
+
+  function siteForOccurrence(record) {
+    return [...siteRecords.values()].find((site) => site.scheduled_application_id === record.id) || null;
+  }
+
+  function rotationStartIndex() {
+    const assigned = [...siteRecords.values()]
+      .filter((site) => site.scheduled_application_id && rotationSites.includes(site.site_code))
+      .sort((first, second) => {
+        const firstOccurrence = occurrences.get(first.scheduled_application_id);
+        const secondOccurrence = occurrences.get(second.scheduled_application_id);
+        return compareOccurrences(firstOccurrence || first, secondOccurrence || second);
+      })
+      .at(-1);
+    const index = rotationSites.indexOf(assigned?.site_code);
+    return index < 0 ? 0 : (index + 1) % rotationSites.length;
+  }
+
+  function updateRotationSuggestion(record = null) {
+    const hint = document.getElementById('plan-rotation-suggestion');
+    if (!hint) return;
+    const stored = record ? siteForOccurrence(record) : null;
+    const code = stored?.site_code || rotationSites[rotationStartIndex()];
+    hint.textContent = `Sugestão de rodízio: ${siteLabels[code]}. Confirme o local de aplicação com seu profissional de saúde.`;
+  }
+
+  function createSitePayloads(records, userId) {
+    const startIndex = rotationStartIndex();
+    return [...records].sort(compareOccurrences).map((record, index) => ({
+      user_id: userId,
+      scheduled_application_id: record.id,
+      site_code: rotationSites[(startIndex + index) % rotationSites.length]
+    }));
+  }
+
   function showToast(message, type = 'info') {
     if (typeof window.showToast === 'function') window.showToast(message, type);
   }
@@ -262,11 +309,12 @@
       form.elements.scheduled_date.value = todayCivil();
       form.elements.scheduled_time.value = '09:00';
       form.elements.frequency_choice.value = 'once';
-      setSelectedReminders([1440, 120, 0]);
+      setSelectedReminders([1440, 120, 15, 0]);
     }
     form.elements.scheduled_date.min = todayCivil();
     setMessage(formMessage);
     updateFrequencyField();
+    updateRotationSuggestion(record);
   }
 
   function openCreate(trigger) {
@@ -323,7 +371,11 @@
     medicine.textContent = plan?.medicine || 'Plano indisponível';
     const dose = document.createElement('p');
     dose.textContent = plan ? formatDose(plan.dose_mg) : 'Dose não disponível';
-    information.append(medicine, dose);
+    const site = siteForOccurrence(record);
+    const rotation = document.createElement('p');
+    rotation.className = 'plan-item-rotation';
+    rotation.textContent = site ? `Rodízio sugerido: ${siteLabel(site)}` : 'Rodízio sugerido será definido ao agendar.';
+    information.append(medicine, dose, rotation);
     const actions = document.createElement('div');
     actions.className = 'plan-item-actions';
     const confirm = document.createElement('button');
@@ -373,7 +425,11 @@
     time.textContent = formatTime(record.scheduled_time);
     const badge = document.createElement('small');
     badge.textContent = 'Agendada';
-    nextContent.append(date, medicine, dose, time, badge);
+    const site = siteForOccurrence(record);
+    const rotation = document.createElement('span');
+    rotation.className = 'plan-next-rotation';
+    rotation.textContent = site ? `Rodízio: ${siteLabel(site)}` : 'Rodízio será definido ao agendar.';
+    nextContent.append(date, medicine, dose, time, rotation, badge);
   }
 
   function renderCalendarDayDetails(dateValue, records) {
@@ -462,11 +518,12 @@
     status.hidden = false;
     status.textContent = 'Carregando seu plano...';
     content.hidden = true;
-    const [planResult, occurrenceResult] = await Promise.all([
+    const [planResult, occurrenceResult, siteResult] = await Promise.all([
       client.from('application_plans').select(planFields).order('created_at', { ascending: true }),
       client.from('scheduled_applications').select(occurrenceFields)
         .order('scheduled_date', { ascending: true })
-        .order('scheduled_time', { ascending: true })
+        .order('scheduled_time', { ascending: true }),
+      client.from('application_site_records').select(siteFields).order('created_at', { ascending: true })
     ]);
     if (currentUserId !== userId) return;
     if (planResult.error || occurrenceResult.error) {
@@ -477,8 +534,11 @@
     }
     plans.clear();
     occurrences.clear();
+    siteRecords.clear();
     (planResult.data || []).forEach((plan) => plans.set(plan.id, plan));
     (occurrenceResult.data || []).forEach((record) => occurrences.set(record.id, record));
+    if (siteResult.error) reportTechnicalError('falha ao carregar sugestões de rodízio', siteResult.error);
+    (siteResult.data || []).forEach((record) => siteRecords.set(record.id, record));
     render();
   }
 
@@ -492,6 +552,7 @@
     calendarMonth = null;
     plans.clear();
     occurrences.clear();
+    siteRecords.clear();
     formModal.hidden = true;
     cancelModal.hidden = true;
     document.body.classList.remove('auth-modal-open');
@@ -676,6 +737,12 @@
         ? 'O plano foi criado, mas as ocorrências falharam e a limpeza automática não foi concluída. Recarregue e tente novamente.'
         : friendlyError(occurrenceResult.error, 'Não foi possível criar as ocorrências. O plano incompleto foi removido.'));
       return;
+    }
+    const siteResult = await client.from('application_site_records')
+      .insert(createSitePayloads(occurrenceResult.data, userData.user.id)).select(siteFields);
+    if (siteResult.error || !Array.isArray(siteResult.data) || siteResult.data.length !== occurrenceResult.data.length) {
+      reportTechnicalError('falha ao criar sugestões de rodízio', siteResult.error);
+      showToast('Aplicações agendadas, mas não foi possível salvar as sugestões de rodízio.', 'info');
     }
     requestInFlight = false;
     submit.disabled = false;
