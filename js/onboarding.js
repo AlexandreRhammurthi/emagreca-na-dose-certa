@@ -10,6 +10,7 @@
   const next = document.getElementById('onboarding-next');
   const back = document.getElementById('onboarding-back');
   const submit = document.getElementById('onboarding-submit');
+  const cancel = document.getElementById('onboarding-cancel');
   const progress = modal.querySelector('.onboarding-progress span');
 
   const show = (el, text, success = false) => { el.textContent = text; el.classList.toggle('success', success); el.hidden = false; };
@@ -48,7 +49,6 @@
     const completed = Boolean(state.profile?.completed_at);
     modal.hidden = false; document.body.classList.add('auth-modal-open'); setStep(completed ? 3 : 1);
     document.getElementById('onboarding-delete-open').hidden = !completed;
-    document.getElementById('onboarding-close').hidden = !completed;
   };
   const close = () => { modal.hidden = true; document.body.classList.remove('auth-modal-open'); };
   async function loadProfile() {
@@ -70,7 +70,7 @@
     event.preventDefault(); if (state.loading || !state.user || !validStep(3)) return;
     state.loading = true; submit.disabled = true; clear(message);
     const medicine = form.elements.medicine.value === 'other' ? form.elements.medicine_other.value.trim() : form.elements.medicine.value;
-    const payload = { user_id: state.user.id, date_of_birth: form.elements.date_of_birth.value, gender: form.elements.gender.value, gender_other: form.elements.gender.value === 'other' ? form.elements.gender_other.value.trim() : null, country_code: form.elements.country_code.value.trim().toUpperCase(), state: form.elements.state.value.trim() || null, city: form.elements.city.value.trim() || null, height_cm: Number(form.elements.height_cm.value), journey_goal: form.elements.journey_goal.value, medicine, application_interval_days: Number(form.elements.application_interval_days.value), reminder_time: form.elements.reminder_time.value, google_calendar_opt_in: form.elements.google_calendar_opt_in.checked, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const payload = { user_id: state.user.id, date_of_birth: form.elements.date_of_birth.value, gender: form.elements.gender.value, gender_other: form.elements.gender.value === 'other' ? form.elements.gender_other.value.trim() : null, country_code: form.elements.country_code.value.trim().toUpperCase(), state: form.elements.state.value, city: form.elements.city.value.trim() || null, height_cm: Number(form.elements.height_cm.value), journey_goal: form.elements.journey_goal.value, medicine, application_interval_days: Number(form.elements.application_interval_days.value), reminder_time: form.elements.reminder_time.value, google_calendar_opt_in: form.elements.google_calendar_opt_in.checked, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() };
     const { data: profile, error } = await client.from('onboarding_profiles').upsert(payload, { onConflict: 'user_id' }).select('*').single();
     if (error) { state.loading = false; submit.disabled = false; show(message, 'Não foi possível salvar seu perfil. Tente novamente.'); return; }
     if (!state.profile?.initial_weight_record_id) {
@@ -99,6 +99,9 @@
   ['diary-nav', 'weight-nav', 'plan-nav', 'register-application', 'weight-register', 'plan-register'].forEach((id) => document.getElementById(id)?.addEventListener('click', requireProfile, true));
   document.getElementById('profile-nav')?.addEventListener('click', async () => { await loadProfile(); fill(state.profile); open(); });
   document.getElementById('onboarding-close').addEventListener('click', close);
+  cancel.addEventListener('click', () => { close(); window.showToast?.('Você pode concluir seu perfil quando quiser.', 'info'); });
+  modal.querySelector('.auth-backdrop').addEventListener('click', close);
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !modal.hidden && !state.loading) close(); });
   form.elements.gender.addEventListener('change', toggleConditional); form.elements.medicine.addEventListener('change', toggleConditional); form.elements.application_interval_days.addEventListener('input', updateInterval);
   next.addEventListener('click', () => { if (validStep(state.step)) setStep(state.step + 1); }); back.addEventListener('click', () => setStep(state.step - 1)); form.addEventListener('submit', save);
   document.getElementById('onboarding-delete-open').addEventListener('click', () => { document.getElementById('account-delete-modal').hidden = false; close(); }); document.querySelectorAll('[data-account-delete-close]').forEach((item) => item.addEventListener('click', () => { document.getElementById('account-delete-modal').hidden = true; })); document.getElementById('account-delete-form').addEventListener('submit', deleteAccount);
