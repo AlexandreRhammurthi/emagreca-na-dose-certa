@@ -11,7 +11,7 @@ Início: 06/09/2026. Cadência: ciclos semanais, com validação antes de cada p
 | 5. Medidas corporais V1 | 13–24 out | Histórico de peso, abdômen, cintura, braços, coxas e panturrilhas | **Publicado** | Produto + jurídico |
 | 6. Relatório PDF pessoal V1 | 27 out–07 nov | PDF sob demanda com doses, locais, anotações, efeitos relatados e evolução corporal | **Publicado** | Produto + jurídico |
 | 2B. Métricas — ativação controlada | 10–14 nov | Migration, Edge Function e painel agregado de ativação/retenção | **Publicado; Privacidade atualizada e JWT validado** | Produto + jurídico |
-| 7. Premium discovery | 17–21 nov | Página Premium, lista de espera e entrevistas | Hipótese de preço validada | Produto |
+| 7. Premium discovery | 17–21 nov | Página Premium, lista de espera e entrevistas | Discovery documentado; aguarda decisão de proposta, preço e coleta | Produto |
 | 8. Assinaturas | 24 nov–05 dez | Entitlements, checkout e período de teste | Pagamento QA e cancelamento validados | Produto + financeiro |
 | 9. Produto profissional discovery | 08–19 dez | Protótipo de convite e consentimento paciente-profissional | Pesquisa com profissionais | Produto + jurídico |
 
@@ -62,6 +62,7 @@ Início: 06/09/2026. Cadência: ciclos semanais, com validação antes de cada p
 
 - Auditoria geral concluída: testes, build, integridade, publicação e cópia de segurança registrados em `PLATFORM_RELEASE_AUDIT_2026-09-07.md`.
 - A plataforma está pronta para a fase de descoberta Premium; pagamentos, preços e entitlements continuam fora do produto até decisão específica.
+- Discovery Premium documentado em `PREMIUM_DISCOVERY_V1.md`; nenhuma cobrança, bloqueio de recurso ou coleta comercial foi ativada.
 
 ## Indicadores semanais
 
