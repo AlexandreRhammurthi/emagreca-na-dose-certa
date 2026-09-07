@@ -19,7 +19,8 @@
   const notes = document.getElementById('weight-notes');
   const records = new Map();
   let currentUserId = null;
-  let requestInFlight = false;
+  let formRequestInFlight = false;
+  let deleteRequestInFlight = false;
   let returnFocus = null;
   let editingId = null;
   let deletingId = null;
@@ -110,7 +111,7 @@
   }
 
   function closeModal(restoreFocus = true) {
-    if (requestInFlight) return;
+    if (formRequestInFlight) return;
     modal.hidden = true;
     editingId = null;
     if (deleteModal.hidden) document.body.classList.remove('auth-modal-open');
@@ -508,7 +509,7 @@
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (!client || requestInFlight) return;
+    if (!client || formRequestInFlight) return;
     setMessage();
     const recordDate = form.elements.record_date.value;
     const weightKg = parseWeight(form.elements.weight_kg.value);
@@ -522,13 +523,19 @@
       setMessage('Este registro não pode ser editado por esta tela.');
       return;
     }
-    const { data: userData, error: userError } = await client.auth.getUser();
-    if (userError || !userData.user || userData.user.id !== currentUserId) {
+    let userData;
+    let userError;
+    try {
+      ({ data: userData, error: userError } = await client.auth.getUser());
+    } catch (error) {
+      userError = error;
+    }
+    if (userError || !userData?.user || userData.user.id !== currentUserId) {
       setMessage('Sua sessão expirou. Entre novamente.');
       return;
     }
     const submit = form.querySelector('[type="submit"]');
-    requestInFlight = true;
+    formRequestInFlight = true;
     submit.disabled = true;
     submit.classList.add('is-loading');
     const payload = {
@@ -554,7 +561,7 @@
     } catch (error) {
       result = { data: null, error };
     } finally {
-      requestInFlight = false;
+      formRequestInFlight = false;
       submit.disabled = false;
       submit.classList.remove('is-loading');
     }
@@ -570,18 +577,24 @@
   });
 
   document.getElementById('weight-delete-confirm').addEventListener('click', async (event) => {
-    if (!client || requestInFlight || !deletingId) return;
+    if (!client || deleteRequestInFlight || !deletingId) return;
     const id = deletingId;
     const record = records.get(id);
     if (!record || record.source !== 'manual' || record.application_id !== null) return;
-    const { data: userData, error: userError } = await client.auth.getUser();
-    if (userError || !userData.user || userData.user.id !== currentUserId) {
+    let userData;
+    let userError;
+    try {
+      ({ data: userData, error: userError } = await client.auth.getUser());
+    } catch (error) {
+      userError = error;
+    }
+    if (userError || !userData?.user || userData.user.id !== currentUserId) {
       deleteMessage.textContent = 'Sua sessão expirou. Entre novamente.';
       deleteMessage.hidden = false;
       return;
     }
     const button = event.currentTarget;
-    requestInFlight = true;
+    deleteRequestInFlight = true;
     button.disabled = true;
     let result;
     try {
@@ -594,7 +607,7 @@
     } catch (error) {
       result = { data: null, error };
     } finally {
-      requestInFlight = false;
+      deleteRequestInFlight = false;
       button.disabled = false;
     }
     if (result.error || result.data?.id !== id) {
