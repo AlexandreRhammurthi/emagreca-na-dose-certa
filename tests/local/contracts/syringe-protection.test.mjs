@@ -22,8 +22,18 @@ test('fórmula e arredondamento do simulador permanecem idênticos à versão va
 
 test('a escala está no SVG, recortada pela mesma área útil do líquido', () => {
   assert.match(html, /<clipPath id="barrelClip">\s*<rect x="144" y="45" width="446" height="30"/);
-  assert.match(html, /<g id="layer-liquido" clip-path="url\(#barrelClip\)">\s*<rect id="liquid" x="509" y="45" width="65" height="30"/);
+  assert.match(html, /<g id="layer-liquido" clip-path="url\(#barrelClip\)">\s*<rect id="liquid" x="574" y="45" width="0" height="30"/);
   assert.match(html, /<g id="layer-escala" clip-path="url\(#barrelClip\)">\s*<g id="ticks"/);
+});
+
+test('estado sem prescrição válida limpa o resultado visual sem tocar na fórmula', () => {
+  assert.match(app, /const calculation = medicine \? calculateDose\(/);
+  assert.match(app, /function renderZeroResult\(capacity\)/);
+  assert.match(app, /renderSyringeResult\(\{ capacity, units: 0, volume: 0, percentage: 0 \}\)/);
+  assert.match(app, /\$\('units-value'\)\.textContent = resultNumber\(units, 2\)/);
+  assert.match(app, /\$\('ml-value'\)\.textContent = `\$\{resultNumber\(volume, 3\)\} mL`/);
+  assert.match(html, /id="units-value">0,00</);
+  assert.match(html, /id="ml-value">0,000 mL</);
 });
 
 test('identificadores dinâmicos e camadas anatômicas foram preservados', () => {

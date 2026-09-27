@@ -5,6 +5,21 @@ import test from 'node:test';
 const html = readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
 const auth = readFileSync(new URL('../../../js/auth.js', import.meta.url), 'utf8');
 
+function functionBody(source, name) {
+  const start = source.indexOf(`function ${name}(`);
+  assert.notEqual(start, -1, `função ${name} não encontrada`);
+
+  const openBrace = source.indexOf('{', start);
+  let depth = 0;
+  for (let index = openBrace; index < source.length; index += 1) {
+    if (source[index] === '{') depth += 1;
+    if (source[index] === '}') depth -= 1;
+    if (depth === 0) return source.slice(openBrace + 1, index);
+  }
+
+  assert.fail(`corpo da função ${name} não foi fechado`);
+}
+
 test('COR-008 mostra confirmação acessível depois de criação bem-sucedida', () => {
   assert.match(html, /data-auth-view="signup-success" role="status" aria-live="polite"/);
   assert.match(html, /<h2 tabindex="-1">Cadastro realizado com sucesso<\/h2>/);
@@ -25,8 +40,23 @@ test('COR-008 não redireciona antes de OK e mantém erros no formulário', () =
 });
 
 test('modal de cadastro pode ser fechado antes de uma solicitação ser enviada', () => {
-  assert.match(auth, /function closeModal\(\) \{\s*if \(activeRequest \|\| recoveryMode \|\| signupSuccessActive\) return;\s*signupGateActive = false;/);
-  assert.doesNotMatch(auth, /activeRequest \|\| recoveryMode \|\| signupGateActive \|\| signupSuccessActive/);
+  const closeModal = functionBody(auth, 'closeModal');
+  const guard = /if \(activeRequest \|\| recoveryMode \|\| signupSuccessActive\) return;/;
+  const cancelledGate = 'const signupGateCancelled = signupGateActive && !currentUser;';
+  const clearGate = 'signupGateActive = false;';
+
+  assert.match(closeModal, guard);
+  assert.doesNotMatch(closeModal, /activeRequest \|\| recoveryMode \|\| signupGateActive \|\| signupSuccessActive/);
+  assert.ok(closeModal.includes(clearGate), 'o fechamento deve liberar o gate de cadastro');
+  assert.ok(closeModal.includes(cancelledGate), 'o cancelamento deve ser identificado para visitantes');
+  assert.ok(
+    closeModal.indexOf(cancelledGate) < closeModal.indexOf(clearGate),
+    'o cancelamento deve ser identificado antes de limpar o estado do gate',
+  );
+  assert.match(
+    closeModal,
+    /if \(signupGateCancelled\) document\.dispatchEvent\(new CustomEvent\('dosecerta:signup-gate-cancelled'\)\)/,
+  );
 });
 
 test('COR-008 preserva validações e o consentimento corrigido no COR-007', () => {

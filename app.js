@@ -80,6 +80,18 @@ function number(value, digits = 2) {
   return value.toLocaleString('pt-BR', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
 }
 
+function numberFixed(value, digits) {
+  return value.toLocaleString('pt-BR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+}
+
+function percentageLabel(value) {
+  return value === 0 ? numberFixed(value, 0) : number(value, 1);
+}
+
+function resultNumber(value, digits) {
+  return value === 0 ? numberFixed(value, digits) : number(value, digits);
+}
+
 function renderTicks(capacity) {
   const ticks = $('ticks');
   ticks.replaceChildren();
@@ -125,28 +137,7 @@ function renderTicks(capacity) {
   }
 }
 
-function update() {
-  const vialMg = parseFloat($('vial-mg').value);
-  const vialMl = parseFloat($('vial-ml').value);
-  const doseMg = parseFloat($('dose-mg').value);
-  const capacity = parseFloat(document.querySelector('[name="capacity"]:checked').value);
-  const error = $('form-error');
-  const calculation = calculateDose({ vialMg, vialMl, doseMg, syringeCapacity: capacity });
-  error.hidden = Boolean(calculation);
-  if (!calculation) {
-    currentSimulation = null;
-    document.dispatchEvent(new CustomEvent('dosecerta:simulation', { detail: null }));
-    error.textContent = 'Preencha todos os valores com números maiores que zero.';
-    return;
-  }
-
-  const { concentration, volumeMl: volume, units, percentage } = calculation;
-  const medicineOption = $('medicine').selectedOptions[0];
-  currentSimulation = {
-    ...calculation,
-    medicine: medicineOption.textContent.trim()
-  };
-  document.dispatchEvent(new CustomEvent('dosecerta:simulation', { detail: { ...currentSimulation } }));
+function renderSyringeResult({ capacity, units, volume, percentage }) {
   const displayPercentage = Math.min(100, Math.max(0, percentage));
   const markerX = syringeEnd - (displayPercentage / 100) * (syringeEnd - syringeStart);
   const liquidWidth = syringeEnd - markerX;
@@ -154,9 +145,9 @@ function update() {
   const stopperX = markerX - stopperWidth;
   const rodEnd = Math.max(34, stopperX);
 
-  $('units-value').textContent = number(units);
-  $('ml-value').textContent = `${number(volume, 3)} mL`;
-  $('capacity-text').textContent = `${number(percentage, 1)}% da seringa de ${capacity} UI`;
+  $('units-value').textContent = resultNumber(units, 2);
+  $('ml-value').textContent = `${resultNumber(volume, 3)} mL`;
+  $('capacity-text').textContent = `${percentageLabel(percentage)}% da seringa de ${capacity} UI`;
   $('capacity-fill').style.width = `${displayPercentage}%`;
 
   const liquidEl = $('liquid');
@@ -195,7 +186,42 @@ function update() {
     markerArrow.setAttribute('d', `M${markerX} 33l-6 -11h12Z`);
   }
 
-  $('syringe').setAttribute('aria-label', `Seringa preenchida até ${number(units)} unidades`);
+  $('syringe').setAttribute('aria-label', `Seringa preenchida até ${resultNumber(units, 2)} unidades`);
+}
+
+function renderZeroResult(capacity) {
+  renderSyringeResult({ capacity, units: 0, volume: 0, percentage: 0 });
+  $('calc-concentration').textContent = '—';
+  $('calc-volume').textContent = '—';
+  $('calc-units').textContent = '—';
+  renderTicks(capacity);
+}
+
+function update() {
+  const vialMg = parseFloat($('vial-mg').value);
+  const vialMl = parseFloat($('vial-ml').value);
+  const doseMg = parseFloat($('dose-mg').value);
+  const capacity = parseFloat(document.querySelector('[name="capacity"]:checked').value);
+  const medicine = $('medicine').value;
+  const error = $('form-error');
+  const calculation = medicine ? calculateDose({ vialMg, vialMl, doseMg, syringeCapacity: capacity }) : null;
+  error.hidden = Boolean(calculation);
+  if (!calculation) {
+    currentSimulation = null;
+    document.dispatchEvent(new CustomEvent('dosecerta:simulation', { detail: null }));
+    error.textContent = 'Selecione o medicamento e preencha todos os valores com números maiores que zero.';
+    renderZeroResult(capacity);
+    return;
+  }
+
+  const { concentration, volumeMl: volume, units, percentage } = calculation;
+  const medicineOption = $('medicine').selectedOptions[0];
+  currentSimulation = {
+    ...calculation,
+    medicine: medicineOption.textContent.trim()
+  };
+  document.dispatchEvent(new CustomEvent('dosecerta:simulation', { detail: { ...currentSimulation } }));
+  renderSyringeResult({ capacity, units, volume, percentage });
 
   $('calc-concentration').textContent = `${number(vialMg)} mg ÷ ${number(vialMl)} mL = ${number(concentration)} mg/mL`;
   $('calc-volume').textContent = `${number(doseMg)} mg ÷ ${number(concentration)} mg/mL = ${number(volume, 3)} mL`;
