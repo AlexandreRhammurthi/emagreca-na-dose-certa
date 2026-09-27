@@ -53,6 +53,15 @@ test('visitante precisa se cadastrar ao interagir com qualquer controle da simul
   assert.match(onboarding, /getElementById\('dose-form'\)\?\.addEventListener\('click', requireSimulationProfile, true\)/);
 });
 
+test('fechar o cadastro obrigatório restaura a simulação inicial do visitante', () => {
+  const app = readFileSync(new URL('../../../app.js', import.meta.url), 'utf8');
+  assert.match(auth, /const signupGateCancelled = signupGateActive && !currentUser/);
+  assert.match(auth, /if \(signupGateCancelled\) document\.dispatchEvent\(new CustomEvent\('dosecerta:signup-gate-cancelled'\)\)/);
+  assert.match(app, /function resetSimulation\(\)/);
+  assert.match(app, /document\.addEventListener\('dosecerta:signup-gate-cancelled', \(\) => resetSimulation\(\)\)/);
+  assert.match(app, /reset: resetSimulation/);
+});
+
 test('perfil, consentimentos e ownership RLS estão presentes na migration', () => {
   assert.match(migration, /create table if not exists public\.onboarding_profiles/);
   assert.match(migration, /create table if not exists public\.user_consents/);

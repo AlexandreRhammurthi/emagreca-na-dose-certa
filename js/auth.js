@@ -103,10 +103,12 @@
 
   function closeModal() {
     if (activeRequest || recoveryMode || signupSuccessActive) return;
+    const signupGateCancelled = signupGateActive && !currentUser;
     signupGateActive = false;
     modal.hidden = true;
     document.body.classList.remove('auth-modal-open');
     returnFocus?.focus();
+    if (signupGateCancelled) document.dispatchEvent(new CustomEvent('dosecerta:signup-gate-cancelled'));
   }
 
   function renderSession(session) {

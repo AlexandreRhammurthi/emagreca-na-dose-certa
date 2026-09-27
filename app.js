@@ -32,6 +32,14 @@ function populateMedicineSelect(select) {
 
 populateMedicineSelect($('medicine'));
 
+const initialSimulation = Object.freeze({
+  vialMg: $('vial-mg').value,
+  vialMl: $('vial-ml').value,
+  doseMg: $('dose-mg').value,
+  medicine: $('medicine').value,
+  syringeCapacity: document.querySelector('[name="capacity"]:checked').value
+});
+
 function calculateDose({ vialMg, vialMl, doseMg, syringeCapacity }) {
   const values = [vialMg, vialMl, doseMg, syringeCapacity].map(Number);
   if (!values.every((value) => Number.isFinite(value) && value > 0)) return null;
@@ -51,9 +59,21 @@ function calculateDose({ vialMg, vialMl, doseMg, syringeCapacity }) {
   };
 }
 
+function resetSimulation() {
+  $('vial-mg').value = initialSimulation.vialMg;
+  $('vial-ml').value = initialSimulation.vialMl;
+  $('dose-mg').value = initialSimulation.doseMg;
+  $('medicine').value = initialSimulation.medicine;
+  document.querySelectorAll('[name="capacity"]').forEach((element) => {
+    element.checked = element.value === initialSimulation.syringeCapacity;
+  });
+  update();
+}
+
 window.DoseCalculator = Object.freeze({
   calculateDose,
-  getCurrentSimulation: () => currentSimulation ? { ...currentSimulation } : null
+  getCurrentSimulation: () => currentSimulation ? { ...currentSimulation } : null,
+  reset: resetSimulation
 });
 
 function number(value, digits = 2) {
@@ -203,4 +223,5 @@ function update() {
 inputs.forEach(id => $(id).addEventListener('input', update));
 document.querySelectorAll('[name="capacity"]').forEach(el => el.addEventListener('change', update));
 $('medicine').addEventListener('change', update);
+document.addEventListener('dosecerta:signup-gate-cancelled', () => resetSimulation());
 update();
