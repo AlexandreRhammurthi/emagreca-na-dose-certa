@@ -83,3 +83,63 @@ O runner `.agents/artifacts/pilot001-visual-final.mjs` confirmou novamente estad
 **QA: PASS**
 
 QA autoriza o DEV a realizar commit, push da branch `feature/pilot-simulador-estado-zero` e deploy, desde que a etapa de deploy seja autorizada pelo responsável do projeto e os checks finais de Git sejam executados. Este QA não executou commit, push ou deploy.
+
+---
+
+# Relatório QA — ADMIN-ANALYTICS-V1
+
+**Estado:** PASS LOCAL / CONTRATUAL — gate remoto pendente
+**Branch testada:** `feature/product-analytics-dashboard`
+**Base sob teste:** alterações locais entregues pelo DEV após `04b86a5`
+**Data:** 2026-09-27
+
+## Segurança e privacidade
+
+| Controle | Resultado |
+| --- | --- |
+| Allowlist administrativa fora do HTML/JavaScript público | PASS — endereço autorizado não encontrado fora do segredo esperado da Edge Function |
+| Autenticação normal do cliente | PASS — usa somente `signInWithPassword`, sessão normal e `signOut` |
+| Decisão de acesso no servidor | PASS — JWT é validado e a comparação com `ADMIN_ANALYTICS_ALLOWED_EMAIL` ocorre somente na Edge Function |
+| Credencial privilegiada fora do cliente | PASS — `SUPABASE_SERVICE_ROLE_KEY` existe apenas no código servidor; não há chave, token ou segredo versionado |
+| Resposta sem PII/dados clínicos/eventos individuais | PASS contratual — resposta construída contém somente período, coorte, métricas, funil, adoção e insights agregados |
+| Escopo de eventos | PASS — somente `account_created`, `onboarding_completed`, `first_product_action` e `product_returned` |
+| Retenção | PASS local — purge de 30 dias, rotina `SECURITY INVOKER`, revogação pública e agendamento reversível quando `pg_cron` existir |
+| Produção | NÃO TESTADA — sem segredo, migration, Edge Function remota, credenciais ou autenticação de usuário |
+
+## Cobertura funcional e visual local
+
+| Cenário | Resultado |
+| --- | --- |
+| Página deslogada | PASS — somente formulário de login; dashboard oculto |
+| Dashboard agregado simulado | PASS — cinco cards, funil, adoção, insights, atualização e logout |
+| Acesso negado simulado | PASS — mensagem sanitizada, dashboard permanece oculto |
+| Desktop 1440×1000 | PASS |
+| Móvel 390×844 | PASS — sem overflow horizontal |
+| Console renderizado | PASS — nenhum erro de produto no cenário local simulado |
+| Teclado | PASS — campos e botões nativos focáveis; foco visível definido no CSS |
+
+## Evidências
+
+- Runner independente: `.agents/artifacts/admin-analytics-visual.mjs`.
+- Screenshots sem dados reais ou pessoais:
+  - `.agents/artifacts/screenshots/admin-analytics-desktop.png`
+  - `.agents/artifacts/screenshots/admin-analytics-mobile.png`
+- Revisão visual: PASS. Cards e funil permanecem legíveis; em móvel, o conteúdo empilha corretamente e o botão de atualização ocupa a largura disponível.
+
+## Gates executados
+
+| Comando / gate | Resultado |
+| --- | --- |
+| `node --test tests/local/contracts/admin-analytics-v1.test.mjs` | PASS — 5/5 |
+| `npm.cmd test` | PASS — 152/152 |
+| `npm.cmd run build` | PASS — `BUILD: SUCCESS`, 24/24; Secret Key/service_role no bundle: NÃO |
+| `git diff --check` | PASS |
+| `node .agents/artifacts/admin-analytics-visual.mjs` | PASS — Chromium, desktop, móvel, login simulado, acesso negado simulado e logout |
+
+## Ressalva de produção
+
+O QA não autenticou conta real, não configurou segredo, não invocou a Edge Function, não aplicou migration e não acessou Supabase remoto. Antes de deploy, o gate de produção deve validar separadamente a conta administrativa autorizada, uma conta descartável não autorizada, o segredo exclusivamente no ambiente servidor e o precheck da migration de retenção.
+
+## Decisão
+
+**QA: PASS LOCAL / CONTRATUAL.** Commit e push da branch podem seguir após os checks finais de Git. Deploy, configuração de segredo e migration continuam bloqueados até autorização e gate remoto específico.

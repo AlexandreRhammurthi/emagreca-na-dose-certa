@@ -1,26 +1,20 @@
 # Andamento da tarefa
 
-**Tarefa:** PILOT-001 — Estado inicial seguro do resultado da dose
-**Branch:** `feature/pilot-simulador-estado-zero`
-**Agente ativo:** QA final independente — concluído
-**Etapa atual:** PRONTA PARA COMMIT/PUSH/DEPLOY AUTORIZADOS
-**Gates concluídos:** implementação, contratos focais, correção semântica COR-008, suíte completa, build, integridade do diff, Chromium desktop/móvel e evidências visuais
-**Percentual estimado:** 100%
+**Tarefa:** ADMIN-ANALYTICS-V1 — Console administrativo de adoção
+**Branch:** `feature/product-analytics-dashboard`
+**Agente ativo:** QA
+**Etapa atual:** QA LOCAL E VISUAL CONCLUÍDOS — PRONTA PARA COMMIT/PUSH DA BRANCH
+**Gates concluídos:** página isolada, autenticação normal, Edge Function protegida por segredo, agregação sem PII, retenção versionada, contratos focais, suíte local, build, integridade do diff e QA renderizado desktop/móvel
+**Percentual estimado:** 90%
 **Última atualização:** 2026-09-27
 
 ## Última ação
 
-QA reexecutou `npm.cmd test` (147/147 PASS), `npm.cmd run build` (`BUILD: SUCCESS`, 22/22) e `git diff --check` (PASS). O Chromium gerou novamente as evidências desktop/móvel e confirmou o estado zero, prescrição válida e capacidades 30/50/100 UI.
+QA executou os contratos focais (5/5), suíte local (152/152), build (24/24), `git diff --check` e Chromium local em 1440×1000 e 390×844. Login, dashboard agregado, acesso negado e logout foram validados com doubles locais, sem dados ou credenciais reais. Screenshots foram salvas em `.agents/artifacts/screenshots/`.
 
 ## Próximo passo
 
-DEV deve confirmar branch e `git status`, revisar o diff esperado, criar commit, fazer push da branch e confirmar `git status` após o push. Deploy pode seguir somente sob autorização explícita já concedida pelo responsável.
-
-## Decisão PO — baseline COR-008
-
-**Decisão:** CORREÇÃO VALIDADA — teste obsoleto atualizado, sem alteração requerida em `js/auth.js`.
-
-**Evidência:** `js/auth.js` preserva o fechamento livre antes de requisição (`activeRequest`, `recoveryMode` e `signupSuccessActive` são os únicos bloqueios), limpa o gate e emite o evento de cancelamento. `tests/local/contracts/onboarding-v1.test.mjs` exige explicitamente esse evento e `app.js` o usa para `resetSimulation()`.
+DEV deve executar os checks finais de Git, criar commit e fazer push da branch. Não há autorização para migration remota, configuração de segredo ou deploy. Um gate remoto específico continua obrigatório antes de qualquer publicação da Edge Function ou aplicação da retenção.
 
 ## Regras de leitura
 

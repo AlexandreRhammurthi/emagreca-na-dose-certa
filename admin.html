@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="description" content="Console administrativo interno do Dose Certa." />
+    <title>Dose Certa — Administração</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="admin-page">
+    <header class="topbar admin-topbar">
+      <a class="brand" href="index.html" aria-label="Dose Certa, início">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M10.2 23.2 22.9 10.5a5 5 0 0 0-7.1-7.1L3.1 16.1a5 5 0 1 0 7.1 7.1Z"/><path d="m9.5 9.7 12.8 12.8"/></svg></span>
+        <span>Dose Certa</span>
+      </a>
+      <span class="admin-label">Administração interna</span>
+      <button class="secondary-action" id="admin-signout" type="button" hidden>Sair</button>
+    </header>
+
+    <main class="admin-main">
+      <section class="admin-login panel" id="admin-login" aria-labelledby="admin-login-title">
+        <p class="eyebrow">ACESSO RESTRITO</p>
+        <h1 id="admin-login-title">Painel de produto</h1>
+        <p>Entre com sua conta administrativa para consultar indicadores agregados dos últimos 30 dias.</p>
+        <form id="admin-login-form" novalidate>
+          <label class="auth-field" for="admin-email">E-mail</label>
+          <input class="auth-input" id="admin-email" name="email" type="email" autocomplete="username" required />
+          <label class="auth-field" for="admin-password">Senha</label>
+          <input class="auth-input" id="admin-password" name="password" type="password" autocomplete="current-password" required />
+          <p class="auth-message" id="admin-login-message" role="alert" hidden></p>
+          <button class="auth-submit" type="submit"><span class="button-loader" aria-hidden="true"></span><span>Entrar</span></button>
+        </form>
+      </section>
+
+      <section class="admin-dashboard" id="admin-dashboard" aria-labelledby="admin-title" hidden>
+        <div class="admin-heading">
+          <div><p class="eyebrow">OBSERVABILIDADE DE PRODUTO</p><h1 id="admin-title">Adoção e usabilidade</h1><p id="admin-period" class="admin-period"></p></div>
+          <button class="secondary-action" id="admin-refresh" type="button">Atualizar</button>
+        </div>
+        <p class="admin-status" id="admin-status" role="status" aria-live="polite"></p>
+
+        <div class="admin-metrics" id="admin-metrics" aria-live="polite"></div>
+
+        <div class="admin-grid">
+          <section class="admin-card" aria-labelledby="admin-funnel-title"><h2 id="admin-funnel-title">Funil de jornada</h2><p class="admin-card-note">Usuários únicos no período selecionado.</p><ol class="admin-funnel" id="admin-funnel"></ol></section>
+          <section class="admin-card" aria-labelledby="admin-adoption-title"><h2 id="admin-adoption-title">Adoção da primeira ação</h2><p class="admin-card-note">Distribuição entre os recursos observáveis no V1.</p><ul class="admin-adoption" id="admin-adoption"></ul></section>
+        </div>
+
+        <section class="admin-card" aria-labelledby="admin-insights-title"><h2 id="admin-insights-title">Insights para evolução</h2><p class="admin-card-note">Alertas exigem coorte mínima de 30 contas e comparam 7 dias recentes ao histórico anterior.</p><div id="admin-insights"></div></section>
+        <p class="admin-disclaimer">Este painel apresenta somente contagens e percentuais agregados. Não exibe usuários, eventos individuais nem dados de saúde.</p>
+      </section>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/admin-analytics.js"></script>
+  </body>
+</html>
