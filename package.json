@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
-    "supabase": "^2.113.0"
+    "supabase": "^2.113.0",
+    "wrangler": "^4.142.0"
   }
 }
