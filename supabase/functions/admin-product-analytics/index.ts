@@ -6,6 +6,7 @@ const ACTION_KINDS = new Set(['application', 'weight', 'plan', 'google_calendar'
 const RETENTION_DAYS = 30;
 
 type ProductEvent = { user_id: string; event_name: string; action_kind: string; simulated_in_session: boolean; event_day: string };
+type ProfileAccount = { id: string; created_at: string };
 
 function corsHeaders(origin: string | null) {
   const headers: Record<string, string> = {
@@ -76,42 +77,49 @@ Deno.serve(async (request) => {
     const startDay = previousDay(endDay, RETENTION_DAYS - 1);
     const { error: cleanupError } = await serverClient.from('product_events').delete().lt('occurred_at', `${cutoff}T00:00:00.000Z`);
     if (cleanupError) throw new Error('retention_cleanup_failed');
+    const { data: profileData, error: profileError } = await serverClient
+      .from('profiles')
+      .select('id,created_at')
+      .gte('created_at', `${startDay}T00:00:00.000Z`)
+      .lt('created_at', `${nextDay(endDay, 1)}T00:00:00.000Z`);
+    if (profileError) throw new Error('account_cohort_query_failed');
     const { data, error } = await serverClient.from('product_events').select('user_id,event_name,action_kind,simulated_in_session,event_day').gte('event_day', startDay).lte('event_day', endDay);
     if (error) throw new Error('aggregate_query_failed');
 
     const events = (data || []).filter((event): event is ProductEvent => EVENT_NAMES.has(event.event_name) && typeof event.user_id === 'string' && typeof event.event_day === 'string');
     const byName = (name: string) => events.filter((event) => event.event_name === name);
     const accountEvents = byName('account_created');
-    const accountUsers = uniqueUsers(accountEvents);
-    // A telemetria foi introduzida após algumas contas já existirem. Não usar
-    // account_created como requisito para esconder eventos legítimos desses usuários.
-    const observedUsers = uniqueUsers(events);
+    // O cadastro é a fonte de verdade para contas novas. account_created é
+    // telemetria de frontend, portanto pode inexistir para contas anteriores.
+    const accounts = (profileData || []).filter((profile): profile is ProfileAccount => typeof profile.id === 'string' && typeof profile.created_at === 'string');
+    const accountUsers = new Set(accounts.map((profile) => profile.id));
     const onboardingUsers = uniqueUsers(byName('onboarding_completed'));
     const actionUsers = uniqueUsers(byName('first_product_action'));
     const returnUsers = uniqueUsers(byName('product_returned'));
-    const simulatedAccounts = uniqueUsers(accountEvents.filter((event) => event.simulated_in_session));
-    const d7Eligible = accountEvents.filter((event) => nextDay(event.event_day, 7) <= endDay);
-    const d7Returned = new Set(d7Eligible.filter((account) => events.some((event) => event.user_id === account.user_id && event.event_name === 'product_returned' && event.event_day === nextDay(account.event_day, 7))).map((event) => event.user_id));
+    const simulatedAccounts = uniqueUsers(accountEvents.filter((event) => event.simulated_in_session && accountUsers.has(event.user_id)));
+    const d7Eligible = accounts.filter((account) => nextDay(isoDay(new Date(account.created_at)), 7) <= endDay);
+    const d7Returned = new Set(d7Eligible.filter((account) => events.some((event) => event.user_id === account.id && event.event_name === 'product_returned' && event.event_day === nextDay(isoDay(new Date(account.created_at)), 7))).map((account) => account.id));
     const adoption = Object.fromEntries([...ACTION_KINDS].map((kind) => [kind, uniqueUsers(byName('first_product_action').filter((event) => event.action_kind === kind)).size]));
     const recentStart = previousDay(endDay, 6);
     const priorStart = previousDay(endDay, 13);
-    const recentAccounts = uniqueUsers(accountEvents.filter((event) => event.event_day >= recentStart)).size;
-    const previousAccounts = uniqueUsers(accountEvents.filter((event) => event.event_day >= priorStart && event.event_day < recentStart)).size;
+    const recentAccounts = accounts.filter((account) => isoDay(new Date(account.created_at)) >= recentStart).length;
+    const previousAccounts = accounts.filter((account) => { const day = isoDay(new Date(account.created_at)); return day >= priorStart && day < recentStart; }).length;
     const metrics = {
-      new_accounts: accountUsers.size,
+      new_accounts: accounts.length,
       onboarding_completed: onboardingUsers.size,
       first_product_action: actionUsers.size,
       d7_returned: d7Returned.size,
       accounts_after_simulation: simulatedAccounts.size,
       onboarding_completion_rate: accountUsers.size ? ratio(onboardingUsers.size, accountUsers.size) : null,
       activation_rate: accountUsers.size ? ratio(actionUsers.size, accountUsers.size) : null,
-      d7_return_rate: ratio(d7Returned.size, new Set(d7Eligible.map((event) => event.user_id)).size),
-      simulation_to_account_rate: accountUsers.size ? ratio(simulatedAccounts.size, accountUsers.size) : null
+      d7_return_rate: ratio(d7Returned.size, new Set(d7Eligible.map((account) => account.id)).size),
+      simulation_to_account_rate: accountEvents.length && accountUsers.size ? ratio(simulatedAccounts.size, accountUsers.size) : null
     };
     return response({
       period: { days: RETENTION_DAYS, start: startDay, end: endDay, label: 'últimos 30 dias' },
-      cohort_size: observedUsers.size,
+      cohort_size: accountUsers.size,
       account_cohort_available: accountUsers.size > 0,
+      simulation_telemetry_available: accountEvents.length > 0,
       sufficient_data: recentAccounts >= 30,
       metrics,
       funnel: { account_created: accountUsers.size, onboarding_completed: onboardingUsers.size, first_product_action: actionUsers.size, product_returned: returnUsers.size },

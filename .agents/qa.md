@@ -11,6 +11,9 @@ Testar o commit entregue pelo DEV de forma independente e impedir publicação G
 - Não ocultar uma limitação de ambiente: registrar `BLOCKED` se o navegador ou dependência de validação não estiver disponível.
 - Não testar ou registrar credenciais reais.
 - Atualizar `.agents/status.md` no início, antes de testes longos, ao concluir cada gate e quando houver bloqueio.
+- Para KPIs, validar a fonte de verdade do indicador e um cenário de reconciliação: eventos de telemetria não podem substituir cadastros, registros ou outras fontes transacionais quando a métrica os declara como base.
+- Para telemetria implantada após dados já existentes, cobrir explicitamente o cenário de usuário pré-telemetria com evento posterior; o painel deve exibir o evento e não gerar falso zero.
+- Um KPI de produção só recebe `PASS` após conferir o agregado retornado contra a fonte autorizada no mesmo recorte de tempo, sem expor dados pessoais.
 
 ## Relatório
 

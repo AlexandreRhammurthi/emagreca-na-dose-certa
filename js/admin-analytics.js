@@ -39,14 +39,14 @@
     return element;
   }
 
-  function renderMetrics(metrics, accountCohortAvailable) {
+  function renderMetrics(metrics, accountCohortAvailable, simulationTelemetryAvailable) {
     const unavailableNote = 'Indisponível sem coorte de novas contas';
     const cards = [
       ['Novas contas', formatNumber(metrics.new_accounts), 'Contas criadas no período'],
       ['Conclusão de onboarding', formatPercent(metrics.onboarding_completion_rate), accountCohortAvailable ? `${formatNumber(metrics.onboarding_completed)} usuários` : unavailableNote],
       ['Ativação', formatPercent(metrics.activation_rate), accountCohortAvailable ? `${formatNumber(metrics.first_product_action)} primeira ação` : unavailableNote],
       ['Retorno D7', formatPercent(metrics.d7_return_rate), `${formatNumber(metrics.d7_returned)} retornos observados`],
-      ['Simulação → conta', formatPercent(metrics.simulation_to_account_rate), accountCohortAvailable ? `${formatNumber(metrics.accounts_after_simulation)} contas` : unavailableNote]
+      ['Simulação → conta', formatPercent(metrics.simulation_to_account_rate), simulationTelemetryAvailable ? `${formatNumber(metrics.accounts_after_simulation)} contas` : 'Indisponível sem telemetria de simulação']
     ];
     const target = document.getElementById('admin-metrics');
     target.replaceChildren(...cards.map(([label, value, note]) => {
@@ -93,7 +93,7 @@
 
   function render(data) {
     document.getElementById('admin-period').textContent = `Período: ${data.period.label}. Dados agregados de ${formatNumber(data.cohort_size)} contas.`;
-    renderMetrics(data.metrics, Boolean(data.account_cohort_available));
+    renderMetrics(data.metrics, Boolean(data.account_cohort_available), Boolean(data.simulation_telemetry_available));
     renderFunnel(data.funnel);
     renderAdoption(data.adoption);
     renderInsights(data.insights, data.sufficient_data);
