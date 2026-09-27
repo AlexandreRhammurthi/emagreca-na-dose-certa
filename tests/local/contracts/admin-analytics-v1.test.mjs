@@ -32,7 +32,16 @@ test('Edge Function protege acesso no servidor e retorna somente agregados', () 
   assert.match(edgeFunction, /metrics,/);
   assert.match(edgeFunction, /funnel:/);
   assert.match(edgeFunction, /adoption,/);
+  assert.match(edgeFunction, /const observedUsers = uniqueUsers\(events\)/);
+  assert.match(edgeFunction, /account_cohort_available: accountUsers\.size > 0/);
+  assert.doesNotMatch(edgeFunction, /cohortEvents\(/);
   assert.doesNotMatch(edgeFunction, /return response\([^\n]*user_id|return response\([^\n]*email/i);
+});
+
+test('painel não apresenta taxa de coorte inexistente como zero por cento', () => {
+  assert.match(client, /Indisponível sem coorte de novas contas/);
+  assert.match(client, /accountCohortAvailable/);
+  assert.match(client, /value !== null/);
 });
 
 test('Edge Function usa somente os quatro eventos aprovados e CORS conhecido', () => {

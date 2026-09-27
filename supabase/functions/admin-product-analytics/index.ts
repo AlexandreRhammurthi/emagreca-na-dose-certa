@@ -83,14 +83,16 @@ Deno.serve(async (request) => {
     const byName = (name: string) => events.filter((event) => event.event_name === name);
     const accountEvents = byName('account_created');
     const accountUsers = uniqueUsers(accountEvents);
-    const cohortEvents = (name: string) => byName(name).filter((event) => accountUsers.has(event.user_id));
-    const onboardingUsers = uniqueUsers(cohortEvents('onboarding_completed'));
-    const actionUsers = uniqueUsers(cohortEvents('first_product_action'));
-    const returnUsers = uniqueUsers(cohortEvents('product_returned'));
+    // A telemetria foi introduzida após algumas contas já existirem. Não usar
+    // account_created como requisito para esconder eventos legítimos desses usuários.
+    const observedUsers = uniqueUsers(events);
+    const onboardingUsers = uniqueUsers(byName('onboarding_completed'));
+    const actionUsers = uniqueUsers(byName('first_product_action'));
+    const returnUsers = uniqueUsers(byName('product_returned'));
     const simulatedAccounts = uniqueUsers(accountEvents.filter((event) => event.simulated_in_session));
     const d7Eligible = accountEvents.filter((event) => nextDay(event.event_day, 7) <= endDay);
     const d7Returned = new Set(d7Eligible.filter((account) => events.some((event) => event.user_id === account.user_id && event.event_name === 'product_returned' && event.event_day === nextDay(account.event_day, 7))).map((event) => event.user_id));
-    const adoption = Object.fromEntries([...ACTION_KINDS].map((kind) => [kind, uniqueUsers(cohortEvents('first_product_action').filter((event) => event.action_kind === kind)).size]));
+    const adoption = Object.fromEntries([...ACTION_KINDS].map((kind) => [kind, uniqueUsers(byName('first_product_action').filter((event) => event.action_kind === kind)).size]));
     const recentStart = previousDay(endDay, 6);
     const priorStart = previousDay(endDay, 13);
     const recentAccounts = uniqueUsers(accountEvents.filter((event) => event.event_day >= recentStart)).size;
@@ -101,14 +103,15 @@ Deno.serve(async (request) => {
       first_product_action: actionUsers.size,
       d7_returned: d7Returned.size,
       accounts_after_simulation: simulatedAccounts.size,
-      onboarding_completion_rate: ratio(onboardingUsers.size, accountUsers.size),
-      activation_rate: ratio(actionUsers.size, accountUsers.size),
+      onboarding_completion_rate: accountUsers.size ? ratio(onboardingUsers.size, accountUsers.size) : null,
+      activation_rate: accountUsers.size ? ratio(actionUsers.size, accountUsers.size) : null,
       d7_return_rate: ratio(d7Returned.size, new Set(d7Eligible.map((event) => event.user_id)).size),
-      simulation_to_account_rate: ratio(simulatedAccounts.size, accountUsers.size)
+      simulation_to_account_rate: accountUsers.size ? ratio(simulatedAccounts.size, accountUsers.size) : null
     };
     return response({
       period: { days: RETENTION_DAYS, start: startDay, end: endDay, label: 'últimos 30 dias' },
-      cohort_size: accountUsers.size,
+      cohort_size: observedUsers.size,
+      account_cohort_available: accountUsers.size > 0,
       sufficient_data: recentAccounts >= 30,
       metrics,
       funnel: { account_created: accountUsers.size, onboarding_completed: onboardingUsers.size, first_product_action: actionUsers.size, product_returned: returnUsers.size },
