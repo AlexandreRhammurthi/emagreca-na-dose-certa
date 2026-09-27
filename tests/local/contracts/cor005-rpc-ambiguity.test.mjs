@@ -1,0 +1,3 @@
+import test from 'node:test'; import assert from 'node:assert/strict'; import { readFile } from 'node:fs/promises';
+const sql=await readFile('supabase/migrations/20260910_fix_update_application_vial_ambiguity.sql','utf8');
+test('COR-005 qualifica delete, preserva contrato e ownership',()=>{assert.match(sql,/delete from public\.vial_usages as vu where vu\.application_id = p_application_id and vu\.user_id = v_user_id/);assert.doesNotMatch(sql,/delete from public\.vial_usages\s+where application_id/u);assert.match(sql,/language plpgsql security invoker/);assert.match(sql,/v_user_id uuid := auth\.uid\(\)/);assert.match(sql,/returns table \(application_id uuid, vial_usage_id uuid\)/);assert.match(sql,/grant execute.*to authenticated/s);});

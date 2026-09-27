@@ -10,6 +10,7 @@ const publicFiles = Object.freeze([
   'index.html',
   'styles.css',
   'app.js',
+  'js/date-utils.js',
   'js/auth.js',
   'js/vials.js',
   'js/diary.js',

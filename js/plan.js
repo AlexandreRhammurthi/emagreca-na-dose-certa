@@ -2,6 +2,7 @@
   'use strict';
 
   const client = window.supabaseClient;
+  const { todayCivil } = window.DoseDate;
   const section = document.getElementById('plan-section');
   const status = document.getElementById('plan-status');
   const content = document.getElementById('plan-content');
@@ -13,7 +14,6 @@
   const calendarDayDetails = document.getElementById('plan-calendar-day-details');
   const calendarToggle = document.getElementById('plan-calendar-toggle');
   const navButton = document.getElementById('plan-nav');
-  const diaryNavButton = document.getElementById('diary-nav');
   const registerButton = document.getElementById('plan-register');
   const formModal = document.getElementById('plan-form-modal');
   const cancelModal = document.getElementById('plan-cancel-modal');
@@ -58,11 +58,6 @@
   }
 
   populateMedicineSelect();
-
-  function todayCivil() {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  }
 
   function currentTime() {
     const now = new Date();
@@ -571,11 +566,10 @@
   });
   registerButton.addEventListener('click', () => openCreate(registerButton));
   navButton.addEventListener('click', () => {
+    if (!currentUserId) return;
+    section.hidden = false;
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     window.setTimeout(() => registerButton.focus({ preventScroll: true }), 300);
-  });
-  diaryNavButton.addEventListener('click', () => {
-    document.getElementById('diary-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
   calendarToggle.addEventListener('click', () => {
     const visible = calendar.classList.toggle('is-mobile-visible');

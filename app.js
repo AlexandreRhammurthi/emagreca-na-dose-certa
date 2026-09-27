@@ -16,6 +16,12 @@ const medicines = Object.freeze([
 window.DoseMedicines = medicines;
 
 function populateMedicineSelect(select) {
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Selecione sua prescrição';
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  select.appendChild(placeholder);
   medicines.forEach(({ value, label }) => {
     const option = document.createElement('option');
     option.value = value;

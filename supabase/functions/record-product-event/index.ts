@@ -1,14 +1,26 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.100.0';
 
+const ALLOWED_ORIGINS = new Set(['http://localhost:8000', 'https://emagrecanadosecerta.com.br', 'https://emagreca-na-dose-certa.arbandeira.workers.dev']);
 const EVENT_NAMES = new Set(['account_created', 'onboarding_completed', 'first_product_action', 'product_returned']);
 const SOURCES = new Set(['onboarding', 'diary', 'weight', 'plan', 'google_calendar']);
 const ACTION_KINDS = new Set(['none', 'application', 'weight', 'plan', 'google_calendar']);
 const ACTION_SOURCES: Record<string, string> = { application: 'diary', weight: 'weight', plan: 'plan', google_calendar: 'google_calendar' };
 const allowedFields = new Set(['event_name', 'source', 'action_kind', 'simulated_in_session']);
 
-const response = (body: Record<string, string>, status: number) => new Response(JSON.stringify(body), {
+function corsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin'
+  };
+  if (origin && ALLOWED_ORIGINS.has(origin)) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
+}
+
+const response = (body: Record<string, string>, status: number, origin: string | null = null) => new Response(JSON.stringify(body), {
   status,
-  headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+  headers: { ...corsHeaders(origin), 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
 });
 
 const required = (name: string) => {
@@ -45,9 +57,16 @@ function parseEvent(value: unknown) {
 }
 
 Deno.serve(async (request) => {
-  if (request.method !== 'POST') return response({ error: 'method_not_allowed' }, 405);
+  const origin = request.headers.get('Origin');
+  if (origin && !ALLOWED_ORIGINS.has(origin)) {
+    return response({ error: 'origin_not_allowed' }, 403, origin);
+  }
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  }
+  if (request.method !== 'POST') return response({ error: 'method_not_allowed' }, 405, origin);
   const authorization = request.headers.get('Authorization') || '';
-  if (!authorization.startsWith('Bearer ')) return response({ error: 'unauthorized' }, 401);
+  if (!authorization.startsWith('Bearer ')) return response({ error: 'unauthorized' }, 401, origin);
   try {
     const url = required('SUPABASE_URL');
     const key = publishableKey();
@@ -56,9 +75,9 @@ Deno.serve(async (request) => {
       global: { headers: { Authorization: authorization } }
     });
     const { data: authData, error: authError } = await client.auth.getUser(authorization.slice(7));
-    if (authError || !authData.user?.id) return response({ error: 'unauthorized' }, 401);
+    if (authError || !authData.user?.id) return response({ error: 'unauthorized' }, 401, origin);
     const event = parseEvent(await request.json().catch(() => null));
-    if (!event) return response({ error: 'invalid_event' }, 400);
+    if (!event) return response({ error: 'invalid_event' }, 400, origin);
     const { error } = await client.from('product_events').insert({
       user_id: authData.user.id,
       event_name: event.eventName,
@@ -66,10 +85,10 @@ Deno.serve(async (request) => {
       action_kind: event.actionKind,
       simulated_in_session: event.simulatedInSession
     });
-    if (error && error.code !== '23505') return response({ error: 'event_not_recorded' }, 500);
-    return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+    if (error && error.code !== '23505') return response({ error: 'event_not_recorded' }, 500, origin);
+    return new Response(null, { status: 204, headers: { ...corsHeaders(origin), 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('record-product-event failed', { category: error instanceof Error ? error.message : 'unknown' });
-    return response({ error: 'event_not_recorded' }, 500);
+    return response({ error: 'event_not_recorded' }, 500, origin);
   }
 });

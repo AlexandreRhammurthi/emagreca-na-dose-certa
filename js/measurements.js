@@ -2,6 +2,7 @@
   'use strict';
 
   const client = window.supabaseClient;
+  const { todayCivil } = window.DoseDate;
   const section = document.getElementById('weight-section');
   const status = document.getElementById('measurements-status');
   const list = document.getElementById('measurements-list');
@@ -17,7 +18,6 @@
   let requestInFlight = false;
   let returnFocus = null;
 
-  function today() { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
   function parse(value) { const normalized = String(value || '').trim(); if (!normalized) return null; if (!/^\d+(?:[.,]\d+)?$/u.test(normalized)) return Number.NaN; const number = Number(normalized.replace(',', '.')); return Number.isFinite(number) && number > 0 && number <= 999.99 ? number : Number.NaN; }
   function dateLabel(value) { const [year, month, day] = String(value || '').split('-'); return year ? `${day}/${month}/${year}` : 'Data não informada'; }
   function format(value) { return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 2 }); }
@@ -27,7 +27,7 @@
 
   function open(trigger, record = null) {
     returnFocus = trigger || document.activeElement; editingId = record?.id || null; form.reset();
-    form.elements.record_date.value = record?.record_date || today();
+    form.elements.record_date.value = record?.record_date || todayCivil();
     fields.forEach((field) => { form.elements[field].value = record?.[field] == null ? '' : String(record[field]).replace('.', ','); });
     form.elements.notes.value = record?.notes || ''; document.getElementById('measurements-form-title').textContent = record ? 'Editar medidas' : 'Registrar medidas'; setMessage();
     modal.hidden = false; document.body.classList.add('auth-modal-open'); window.requestAnimationFrame(() => form.elements.record_date.focus());

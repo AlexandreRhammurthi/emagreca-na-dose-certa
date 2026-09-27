@@ -1,6 +1,7 @@
 (function initializeOnboarding() {
   'use strict';
   const client = window.supabaseClient;
+  const { todayCivil } = window.DoseDate;
   const modal = document.getElementById('onboarding-modal');
   const form = document.getElementById('onboarding-form');
   if (!modal || !form) return;
@@ -12,15 +13,18 @@
   const submit = document.getElementById('onboarding-submit');
   const cancel = document.getElementById('onboarding-cancel');
   const progress = modal.querySelector('.onboarding-progress span');
+  let accountDeletionInFlight = false;
+  let accountDeletionFinishInFlight = false;
 
   const show = (el, text, success = false) => { el.textContent = text; el.classList.toggle('success', success); el.hidden = false; };
   const clear = (el) => { el.hidden = true; el.textContent = ''; el.classList.remove('success'); };
   const ptNumber = (value) => Number(String(value || '').trim().replace('.', '').replace(',', '.'));
   const adult = (value) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
-    const birth = new Date(`${value}T12:00:00Z`); const today = new Date();
-    let age = today.getUTCFullYear() - birth.getUTCFullYear();
-    if (Date.now() < Date.UTC(today.getUTCFullYear(), birth.getUTCMonth(), birth.getUTCDate())) age -= 1;
+    const [birthYear, birthMonth, birthDay] = value.split('-').map(Number);
+    const [todayYear, todayMonth, todayDay] = todayCivil().split('-').map(Number);
+    let age = todayYear - birthYear;
+    if (todayMonth < birthMonth || (todayMonth === birthMonth && todayDay < birthDay)) age -= 1;
     return age >= 18 && age <= 120;
   };
   const setStep = (step) => {
@@ -74,7 +78,7 @@
     const { data: profile, error } = await client.from('onboarding_profiles').upsert(payload, { onConflict: 'user_id' }).select('*').single();
     if (error) { state.loading = false; submit.disabled = false; show(message, 'Não foi possível salvar seu perfil. Tente novamente.'); return; }
     if (!state.profile?.initial_weight_record_id) {
-      const { data: weight, error: weightError } = await client.from('weight_records').insert({ user_id: state.user.id, record_date: new Date().toISOString().slice(0, 10), weight_kg: ptNumber(form.elements.weight_kg.value), notes: 'Peso inicial do onboarding', source: 'manual', application_id: null }).select('id').single();
+      const { data: weight, error: weightError } = await client.from('weight_records').insert({ user_id: state.user.id, record_date: todayCivil(), weight_kg: ptNumber(form.elements.weight_kg.value), notes: 'Peso inicial do onboarding', source: 'manual', application_id: null }).select('id').single();
       if (weightError) { state.loading = false; submit.disabled = false; show(message, 'Seu perfil foi salvo, mas não foi possível registrar o peso inicial. Tente novamente.'); return; }
       await client.from('onboarding_profiles').update({ initial_weight_record_id: weight.id }).eq('user_id', state.user.id);
       profile.initial_weight_record_id = weight.id;
@@ -88,11 +92,68 @@
     if (payload.google_calendar_opt_in) window.showToast?.('Você poderá conectar o Google Agenda em Meu Plano.', 'info');
   }
   async function deleteAccount(event) {
-    event.preventDefault(); const deletion = document.getElementById('account-delete-form'); const out = document.getElementById('account-delete-message');
-    if (deletion.elements.confirmation.value.trim() !== 'EXCLUIR' || !deletion.elements.password.value) { show(out, 'Informe sua senha e digite EXCLUIR para confirmar.'); return; }
-    const { error } = await client.functions.invoke('delete-account', { body: { password: deletion.elements.password.value } }); deletion.elements.password.value = '';
-    if (error) { show(out, 'Não foi possível excluir seus dados. Confirme a senha e tente novamente.'); return; }
-    await client.auth.signOut(); window.location.assign(window.location.pathname);
+    event.preventDefault();
+    if (accountDeletionInFlight) return;
+    const deletion = document.getElementById('account-delete-form');
+    const out = document.getElementById('account-delete-message');
+    const submitButton = deletion.querySelector('[type="submit"]');
+    const password = deletion.elements.password;
+    const confirmation = deletion.elements.confirmation;
+    if (confirmation.value.trim() !== 'EXCLUIR' || !password.value) { show(out, 'Informe sua senha e digite EXCLUIR para confirmar.'); return; }
+    accountDeletionInFlight = true;
+    clear(out); show(out, 'Excluindo sua conta e seus dados...');
+    [submitButton, password, confirmation].forEach((control) => { control.disabled = true; });
+    const originalLabel = submitButton.textContent;
+    submitButton.textContent = 'Excluindo...';
+    try {
+      const { error } = await client.functions.invoke('delete-account', { body: { password: password.value } });
+      password.value = '';
+      if (error) {
+        const status = error.context?.status;
+        show(out, status === 403 ? 'Senha incorreta. Verifique e tente novamente.' : 'Não foi possível excluir sua conta neste momento. Tente novamente.');
+        return;
+      }
+      showAccountDeletionSuccess();
+    } catch {
+      password.value = '';
+      show(out, 'Não foi possível concluir a exclusão. Verifique sua conexão e tente novamente.');
+    } finally {
+      accountDeletionInFlight = false;
+      [submitButton, password, confirmation].forEach((control) => { control.disabled = false; });
+      submitButton.textContent = originalLabel;
+    }
+  }
+  function resetAccountDeletionModal() {
+    const deletion = document.getElementById('account-delete-form');
+    const success = document.getElementById('account-delete-success');
+    document.getElementById('account-delete-title').textContent = 'Excluir todos os seus dados?';
+    document.getElementById('account-delete-subtitle').hidden = false;
+    document.querySelectorAll('[data-account-delete-dismiss]').forEach((item) => { item.hidden = false; });
+    deletion.hidden = false; success.hidden = true;
+    clear(document.getElementById('account-delete-message'));
+  }
+  function showAccountDeletionSuccess() {
+    const deletion = document.getElementById('account-delete-form');
+    const success = document.getElementById('account-delete-success');
+    document.getElementById('account-delete-title').textContent = 'Conta excluída com sucesso';
+    document.getElementById('account-delete-subtitle').hidden = true;
+    document.querySelectorAll('[data-account-delete-dismiss]').forEach((item) => { item.hidden = true; });
+    deletion.hidden = true; success.hidden = false;
+    document.getElementById('account-delete-success-ok').focus();
+  }
+  async function finishAccountDeletion() {
+    if (accountDeletionFinishInFlight) return;
+    accountDeletionFinishInFlight = true;
+    const ok = document.getElementById('account-delete-success-ok');
+    ok.disabled = true;
+    try { await client.auth.signOut(); } catch { /* A exclusão pode invalidar a sessão antes do logout. */ }
+    window.location.assign(window.location.pathname);
+  }
+  function closeAccountDeletionModal() {
+    const success = document.getElementById('account-delete-success');
+    if (!success.hidden || accountDeletionInFlight) return;
+    document.getElementById('account-delete-modal').hidden = true;
+    resetAccountDeletionModal();
   }
   document.addEventListener('dosecerta:auth-session', async ({ detail }) => { state.user = detail?.user || null; state.profile = null; if (!state.user) { close(); return; } await loadProfile(); fill(state.profile); });
   document.addEventListener('dosecerta:simulation', ({ detail }) => { if (detail && !state.user) window.openOnboardingSignupGate?.(); });
@@ -104,11 +165,11 @@
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     const accountDeleteModal = document.getElementById('account-delete-modal');
-    if (!accountDeleteModal.hidden) { event.preventDefault(); accountDeleteModal.hidden = true; return; }
+    if (!accountDeleteModal.hidden) { event.preventDefault(); closeAccountDeletionModal(); return; }
     if (!modal.hidden) { event.preventDefault(); close(); }
   });
   form.elements.gender.addEventListener('change', toggleConditional); form.elements.medicine.addEventListener('change', toggleConditional); form.elements.application_interval_days.addEventListener('input', updateInterval);
   next.addEventListener('click', () => { if (validStep(state.step)) setStep(state.step + 1); }); back.addEventListener('click', () => setStep(state.step - 1)); form.addEventListener('submit', save);
-  document.getElementById('onboarding-delete-open').addEventListener('click', () => { document.getElementById('account-delete-modal').hidden = false; close(); }); document.querySelectorAll('[data-account-delete-close]').forEach((item) => item.addEventListener('click', () => { document.getElementById('account-delete-modal').hidden = true; })); document.getElementById('account-delete-form').addEventListener('submit', deleteAccount);
+  document.getElementById('onboarding-delete-open').addEventListener('click', () => { resetAccountDeletionModal(); document.getElementById('account-delete-modal').hidden = false; close(); }); document.querySelectorAll('[data-account-delete-close]').forEach((item) => item.addEventListener('click', closeAccountDeletionModal)); document.getElementById('account-delete-form').addEventListener('submit', deleteAccount); document.getElementById('account-delete-success-ok').addEventListener('click', finishAccountDeletion);
   toggleConditional(); updateInterval(); setStep(1);
 })();

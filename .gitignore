@@ -9,8 +9,15 @@ supabase/.temp_backup_*/
 .env.*
 !.env.example
 
-# Testes internos de segurança / QA
-tests/
+# Testes: fontes seguras são versionadas; dados e artefatos locais permanecem fora
+tests/maintenance/
+tests/**/.temp/
+tests/**/artifacts/
+tests/**/results/
+tests/**/RLS_TEST_RESULT.md
+test-results/
+playwright-report/
+scripts/test-confirm-scheduled-auth.mjs
 
 # Logs internos das sprints
 AUTH_V1.1_LOG.md

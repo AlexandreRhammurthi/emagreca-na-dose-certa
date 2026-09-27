@@ -1,5 +1,15 @@
 # Auditoria geral e cópia de segurança — 07/09/2026
 
+> Documento histórico: os resultados, publicação e contagens abaixo registram 07/09/2026 e não representam evidência do ambiente atual.
+
+## Atualização de contexto QA — 09/09/2026
+
+O fechamento registrado em `AUDITORIA_QA_2026-09-09_CODEX.md` indica, como fotografia do checkout, 97 testes locais aprovados, 0 falhas e build de 22/22 arquivos. Reexecute `npm test`, `npm run test:civil-date` e `npm run build` para obter evidência atual.
+
+Ainda dependem de validação remota: schema/RLS do Supabase, publicação Cloudflare, OAuth Google ponta a ponta, exclusão destrutiva de conta, telemetria e integração entre duas sessões QA. A abertura e impressão manual do relatório no Chrome também permanecem pendentes antes de release.
+
+As migrations no repositório são propostas ou a versão canônica de DDL; não constituem confirmação de que o banco remoto foi alterado.
+
 ## Estado consolidado
 
 Esta entrega consolida as evoluções publicadas da plataforma Dose Certa: cadastro e perfil, Diário, Meu Plano e integração Google Agenda, Meu Peso, medidas corporais, relatório pessoal, anotações de efeitos, lembretes e rodízio, inventário de frascos e métricas operacionais não clínicas.

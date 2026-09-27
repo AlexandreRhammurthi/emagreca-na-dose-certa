@@ -1,6 +1,26 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.100.0';
 
-const response = (body: Record<string, string>, status: number) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:8000',
+  'https://emagrecanadosecerta.com.br',
+  'https://emagreca-na-dose-certa.arbandeira.workers.dev'
+]);
+
+function corsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin'
+  };
+  if (origin && ALLOWED_ORIGINS.has(origin)) headers['Access-Control-Allow-Origin'] = origin;
+  return headers;
+}
+
+const response = (body: Record<string, string>, status: number, origin: string | null = null) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...corsHeaders(origin), 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+});
 const required = (name: string) => { const value = Deno.env.get(name); if (!value) throw new Error(`missing_${name.toLowerCase()}`); return value; };
 const publishableKey = () => {
   const legacyKey = Deno.env.get('SUPABASE_ANON_KEY');
@@ -12,25 +32,31 @@ const publishableKey = () => {
 };
 
 Deno.serve(async (request) => {
-  if (request.method !== 'POST') return response({ error: 'method_not_allowed' }, 405);
+  const origin = request.headers.get('Origin');
+  if (origin && !ALLOWED_ORIGINS.has(origin)) return response({ error: 'origin_not_allowed' }, 403, origin);
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(origin) });
+  if (request.method !== 'POST') return response({ error: 'method_not_allowed' }, 405, origin);
   const authorization = request.headers.get('Authorization') || '';
-  if (!authorization.startsWith('Bearer ')) return response({ error: 'unauthorized' }, 401);
+  if (!authorization.startsWith('Bearer ')) return response({ error: 'unauthorized' }, 401, origin);
   try {
     const url = required('SUPABASE_URL'); const key = publishableKey(); const adminKey = required('SUPABASE_SERVICE_ROLE_KEY');
     const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
     const { data, error } = await client.auth.getUser(authorization.slice(7));
-    if (error || !data.user?.id || !data.user.email) return response({ error: 'unauthorized' }, 401);
-    const { password } = await request.json();
-    if (typeof password !== 'string' || password.length < 6) return response({ error: 'reauthentication_required' }, 400);
+    if (error || !data.user?.id || !data.user.email) return response({ error: 'unauthorized' }, 401, origin);
+    const payload = await request.json().catch(() => null);
+    const password = payload && typeof payload === 'object' && !Array.isArray(payload)
+      ? (payload as Record<string, unknown>).password
+      : null;
+    if (typeof password !== 'string' || password.length < 6) return response({ error: 'reauthentication_required' }, 400, origin);
     const verified = await fetch(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: data.user.email, password }) });
     const reauth = await verified.json().catch(() => null);
-    if (!verified.ok || reauth?.user?.id !== data.user.id) return response({ error: 'reauthentication_failed' }, 403);
+    if (!verified.ok || reauth?.user?.id !== data.user.id) return response({ error: 'reauthentication_failed' }, 403, origin);
     const admin = createClient(url, adminKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
     const { error: deletionError } = await admin.auth.admin.deleteUser(data.user.id, false);
-    if (deletionError) return response({ error: 'deletion_failed' }, 500);
-    return new Response(null, { status: 204, headers: { 'Cache-Control': 'no-store' } });
+    if (deletionError) return response({ error: 'deletion_failed' }, 500, origin);
+    return new Response(null, { status: 204, headers: { ...corsHeaders(origin), 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('delete-account failed', { category: error instanceof Error ? error.message : 'unknown' });
-    return response({ error: 'deletion_failed' }, 500);
+    return response({ error: 'deletion_failed' }, 500, origin);
   }
 });

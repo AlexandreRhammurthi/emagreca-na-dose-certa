@@ -12,6 +12,7 @@
   let returnFocus = null;
   let recoveryMode = false;
   let signupGateActive = false;
+  let signupSuccessActive = false;
   let currentUser = null;
   let activeRequest = false;
   let toastExitTimer = null;
@@ -80,6 +81,8 @@
   function showView(view) {
     clearMessages();
     resetPasswordVisibility();
+    signupSuccessActive = view === 'signup-success';
+    modal.querySelector('.auth-close').hidden = signupSuccessActive;
     modal.querySelectorAll('[data-auth-view]').forEach((element) => {
       element.hidden = element.dataset.authView !== view;
     });
@@ -87,7 +90,7 @@
     title.id = `auth-title-${view}`;
     dialog.setAttribute('aria-labelledby', title.id);
     window.requestAnimationFrame(() => {
-      modal.querySelector(`[data-auth-view="${view}"] input`)?.focus();
+      (signupSuccessActive ? title : modal.querySelector(`[data-auth-view="${view}"] input`))?.focus();
     });
   }
 
@@ -99,7 +102,8 @@
   }
 
   function closeModal() {
-    if (activeRequest || recoveryMode || signupGateActive) return;
+    if (activeRequest || recoveryMode || signupSuccessActive) return;
+    signupGateActive = false;
     modal.hidden = true;
     document.body.classList.remove('auth-modal-open');
     returnFocus?.focus();
@@ -127,6 +131,20 @@
     modal.querySelector('[data-auth-view="signup"] .auth-subtitle').textContent = 'Crie sua conta gratuita para acompanhar seu progresso e agendar lembretes de acordo com a indicação médica.';
   }
   window.openOnboardingSignupGate = openSignupGate;
+
+  function showSignupSuccess() {
+    signupGateActive = false;
+    showView('signup-success');
+  }
+
+  async function finishSignupSuccess() {
+    if (activeRequest || !signupSuccessActive) return;
+    activeRequest = true;
+    const ok = document.getElementById('signup-success-ok');
+    ok.disabled = true;
+    try { await client?.auth.signOut(); } catch { /* A conta pode ainda não ter uma sessão confirmada. */ }
+    window.location.assign(window.location.pathname);
+  }
 
   function validEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -245,18 +263,12 @@
       setMessage('signup-message', friendlyError(error, 'Não foi possível criar a conta. Tente novamente.'));
       return;
     }
-    if (!data.session) {
-      signupGateActive = false;
-      setMessage('signup-message', 'Cadastro realizado. Verifique seu e-mail para confirmar sua conta.', true);
-      return;
-    }
     form.reset();
-    signupGateActive = false;
-    renderSession(data.session);
-    document.dispatchEvent(new CustomEvent('dosecerta:account-created'));
-    modal.hidden = true;
-    document.body.classList.remove('auth-modal-open');
+    if (data.session) document.dispatchEvent(new CustomEvent('dosecerta:account-created'));
+    showSignupSuccess();
   });
+
+  document.getElementById('signup-success-ok').addEventListener('click', finishSignupSuccess);
 
   document.getElementById('login-form').addEventListener('submit', async (event) => {
     event.preventDefault();

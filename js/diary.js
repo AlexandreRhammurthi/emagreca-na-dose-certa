@@ -3,6 +3,7 @@
 
   const client = window.supabaseClient;
   const calculator = window.DoseCalculator;
+  const { todayCivil, toCivilDate } = window.DoseDate;
   const registerButton = document.getElementById('register-application');
   const diarySection = document.getElementById('diary-section');
   const diaryStatus = document.getElementById('diary-status');
@@ -39,22 +40,11 @@
     return Number(value).toLocaleString('pt-BR', { maximumFractionDigits: digits, minimumFractionDigits: 0 });
   }
 
-  function todayCivil() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
   function daysAgoCivil(days) {
     const date = new Date();
     date.setHours(12, 0, 0, 0);
     date.setDate(date.getDate() - days);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return toCivilDate(date);
   }
 
   function formatCivilDate(value, long = false) {
@@ -177,6 +167,39 @@
       .limit(1)
       .maybeSingle();
     return { record: legacyResult.data || null, error: legacyResult.error };
+  }
+
+  async function removeInitialOnboardingWeight(applicationWeightRecordId) {
+    if (!currentUserId || !applicationWeightRecordId) return { removed: false, error: null };
+
+    const applicationsResult = await client.from('applications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUserId);
+    if (applicationsResult.error) return { removed: false, error: applicationsResult.error };
+    if (applicationsResult.count !== 1) return { removed: false, error: null };
+
+    const profileResult = await client.from('onboarding_profiles')
+      .select('initial_weight_record_id')
+      .eq('user_id', currentUserId)
+      .maybeSingle();
+    if (profileResult.error) return { removed: false, error: profileResult.error };
+    const initialWeightRecordId = profileResult.data?.initial_weight_record_id;
+    if (!initialWeightRecordId || initialWeightRecordId === applicationWeightRecordId) return { removed: false, error: null };
+
+    const deletionResult = await client.from('weight_records').delete()
+      .eq('id', initialWeightRecordId)
+      .eq('user_id', currentUserId)
+      .eq('source', 'manual')
+      .is('application_id', null)
+      .select('id')
+      .maybeSingle();
+    if (deletionResult.error) return { removed: false, error: deletionResult.error };
+    if (deletionResult.data?.id !== initialWeightRecordId) return { removed: false, error: null };
+
+    const profileUpdate = await client.from('onboarding_profiles').update({ initial_weight_record_id: null })
+      .eq('user_id', currentUserId)
+      .eq('initial_weight_record_id', initialWeightRecordId);
+    return { removed: true, error: profileUpdate.error || null };
   }
 
   function fillForm(data, editing = false, initialCalculation = null, associatedWeight = null) {
@@ -481,6 +504,12 @@
     document.getElementById('medicine')?.focus({ preventScroll: true });
   }
 
+  function navigateToDiary() {
+    if (!currentUser) return;
+    diarySection.hidden = false;
+    diarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   registerButton.addEventListener('click', () => {
     if (!calculator?.getCurrentSimulation()) return;
     if (!currentUser) {
@@ -496,6 +525,7 @@
   });
 
   document.getElementById('diary-simulate').addEventListener('click', scrollToSimulator);
+  document.getElementById('diary-nav').addEventListener('click', navigateToDiary);
   document.getElementById('diary-latest-details').addEventListener('click', (event) => {
     if (latestDashboardId) openDetails(latestDashboardId, event.currentTarget);
   });
@@ -645,6 +675,8 @@
         setInlineMessage(formMessage, friendlyConfirmationError(rpcResult.error));
         return;
       }
+      const onboardingWeightCleanup = await removeInitialOnboardingWeight(confirmed.weight_record_id || null);
+      if (onboardingWeightCleanup.error) reportTechnicalError('aplicação confirmada, mas houve falha ao remover o peso inicial do onboarding', onboardingWeightCleanup.error);
       const alreadyCompleted = confirmed.already_completed === true;
       closeModal(formModal, false);
       await loadHistory(currentUserId);
@@ -744,6 +776,8 @@
       synchronizedWeight = weightResult.data || null;
     }
     if (weightError) reportTechnicalError(id ? 'aplicação atualizada, mas houve falha ao sincronizar peso' : 'aplicação registrada, mas houve falha ao registrar peso', weightError);
+    const onboardingWeightCleanup = weightError ? { error: null } : await removeInitialOnboardingWeight(synchronizedWeight?.id || null);
+    if (onboardingWeightCleanup.error) reportTechnicalError('aplicação registrada, mas houve falha ao remover o peso inicial do onboarding', onboardingWeightCleanup.error);
     formRequestInFlight = false;
     submit.disabled = false;
     submit.classList.remove('is-loading');

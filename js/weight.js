@@ -2,6 +2,7 @@
   'use strict';
 
   const client = window.supabaseClient;
+  const { todayCivil } = window.DoseDate;
   const section = document.getElementById('weight-section');
   const status = document.getElementById('weight-status');
   const list = document.getElementById('weight-list');
@@ -24,14 +25,6 @@
   let returnFocus = null;
   let editingId = null;
   let deletingId = null;
-
-  function todayCivil() {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
 
   function formatCivilDate(value) {
     const [year, month, day] = String(value || '').split('-').map(Number);
@@ -471,6 +464,8 @@
   }
 
   navButton.addEventListener('click', () => {
+    if (!currentUserId) return;
+    section.hidden = false;
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     registerButton.focus({ preventScroll: true });
   });
