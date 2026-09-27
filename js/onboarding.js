@@ -70,6 +70,12 @@
     if (!state.user) { event.preventDefault(); event.stopImmediatePropagation(); window.openOnboardingSignupGate?.(); return; }
     if (!state.profile?.completed_at) { event.preventDefault(); event.stopImmediatePropagation(); open(); }
   }
+  function requireSimulationProfile(event) {
+    if (state.user) return;
+    const control = event.target.closest('#dose-form input, #dose-form select, #dose-form label');
+    if (!control) return;
+    event.preventDefault(); event.stopImmediatePropagation(); window.openOnboardingSignupGate?.();
+  }
   async function save(event) {
     event.preventDefault(); if (state.loading || !state.user || !validStep(3)) return;
     state.loading = true; submit.disabled = true; clear(message);
@@ -157,6 +163,7 @@
   }
   document.addEventListener('dosecerta:auth-session', async ({ detail }) => { state.user = detail?.user || null; state.profile = null; if (!state.user) { close(); return; } await loadProfile(); fill(state.profile); });
   document.addEventListener('dosecerta:simulation', ({ detail }) => { if (detail && !state.user) window.openOnboardingSignupGate?.(); });
+  document.getElementById('dose-form')?.addEventListener('click', requireSimulationProfile, true);
   ['diary-nav', 'weight-nav', 'plan-nav', 'register-application', 'weight-register', 'plan-register'].forEach((id) => document.getElementById(id)?.addEventListener('click', requireProfile, true));
   document.getElementById('profile-nav')?.addEventListener('click', async () => { await loadProfile(); fill(state.profile); open(); });
   document.getElementById('onboarding-close').addEventListener('click', close);

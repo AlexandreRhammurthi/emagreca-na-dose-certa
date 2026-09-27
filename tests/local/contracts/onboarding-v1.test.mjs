@@ -47,6 +47,12 @@ test('seletor principal começa pela prescrição e preserva a grafia de Tirzepa
   assert.ok(app.indexOf("select.appendChild(placeholder)") < app.indexOf('medicines.forEach'));
 });
 
+test('visitante precisa se cadastrar ao interagir com qualquer controle da simulação', () => {
+  assert.match(onboarding, /function requireSimulationProfile\(event\)/);
+  assert.match(onboarding, /event\.target\.closest\('#dose-form input, #dose-form select, #dose-form label'\)/);
+  assert.match(onboarding, /getElementById\('dose-form'\)\?\.addEventListener\('click', requireSimulationProfile, true\)/);
+});
+
 test('perfil, consentimentos e ownership RLS estão presentes na migration', () => {
   assert.match(migration, /create table if not exists public\.onboarding_profiles/);
   assert.match(migration, /create table if not exists public\.user_consents/);
