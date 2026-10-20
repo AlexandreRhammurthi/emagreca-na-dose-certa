@@ -12,7 +12,15 @@ test('agenda aplicações criadas e reprocessa pendências ao conectar o Google 
   assert.match(plan, /dosecerta:google-calendar-connection/);
   assert.match(plan, /record\.google_sync_status !== 'synced'/);
   assert.match(calendar, /dosecerta:google-calendar-connection/);
-  assert.match(calendar, /connectionStatus: connection\?\.connection_status \|\| 'disconnected'/);
+  assert.match(calendar, /userId, connectionStatus: connection\?\.connection_status \|\| 'disconnected'/);
+});
+
+test('retorno OAuth não recarrega o plano enquanto o usuário abre o agendamento', () => {
+  assert.match(plan, /let calendarConnectionStatus = 'unknown'/);
+  assert.match(plan, /let planDataLoaded = false/);
+  assert.match(plan, /if \(calendarConnectionStatus !== 'connected' \|\| !planDataLoaded \|\| pendingCalendarSyncInFlight\)/);
+  assert.doesNotMatch(plan, /connectionStatus !== 'connected'\) return;\s*await loadData\(currentUserId\);/s);
+  assert.match(plan, /if \(calendarConnectionUserId !== nextUserId\) calendarConnectionStatus = 'unknown'/);
 });
 
 test('alterações e confirmação usam sincronização forçada da ocorrência exata', () => {

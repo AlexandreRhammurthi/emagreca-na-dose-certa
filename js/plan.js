@@ -45,6 +45,10 @@
   let cancellingId = null;
   let calendarYear = null;
   let calendarMonth = null;
+  let calendarConnectionStatus = 'unknown';
+  let calendarConnectionUserId = null;
+  let planDataLoaded = false;
+  let pendingCalendarSyncInFlight = false;
   const syncInFlight = new Set();
 
   function populateMedicineSelect() {
@@ -556,10 +560,18 @@
   }
 
   async function syncPendingCalendarOccurrences() {
+    if (calendarConnectionStatus !== 'connected' || !planDataLoaded || pendingCalendarSyncInFlight) {
+      return { attempted: 0, succeeded: 0 };
+    }
+    pendingCalendarSyncInFlight = true;
     const pending = [...occurrences.values()].filter((record) => record.google_sync_status !== 'synced');
-    const sync = await syncOccurrences(pending);
-    if (sync.attempted && currentUserId) await loadData(currentUserId);
-    return sync;
+    try {
+      const sync = await syncOccurrences(pending);
+      if (sync.attempted && currentUserId) await loadData(currentUserId);
+      return sync;
+    } finally {
+      pendingCalendarSyncInFlight = false;
+    }
   }
 
   async function loadData(userId) {
@@ -587,6 +599,7 @@
     (occurrenceResult.data || []).forEach((record) => occurrences.set(record.id, record));
     if (siteResult.error) reportTechnicalError('falha ao carregar sugestões de rodízio', siteResult.error);
     (siteResult.data || []).forEach((record) => siteRecords.set(record.id, record));
+    planDataLoaded = true;
     render();
   }
 
@@ -598,6 +611,9 @@
     cancellingId = null;
     calendarYear = null;
     calendarMonth = null;
+    if (calendarConnectionUserId !== nextUserId) calendarConnectionStatus = 'unknown';
+    if (!nextUserId) calendarConnectionUserId = null;
+    planDataLoaded = false;
     plans.clear();
     occurrences.clear();
     siteRecords.clear();
@@ -874,8 +890,14 @@
   });
 
   document.addEventListener('dosecerta:google-calendar-connection', async (event) => {
-    if (!currentUserId || event.detail?.connectionStatus !== 'connected') return;
-    await loadData(currentUserId);
+    if (event.detail?.userId && event.detail.userId !== currentUserId) {
+      calendarConnectionUserId = event.detail.userId;
+      calendarConnectionStatus = event.detail.connectionStatus || 'disconnected';
+      return;
+    }
+    calendarConnectionUserId = currentUserId;
+    calendarConnectionStatus = event.detail?.connectionStatus || 'disconnected';
+    if (!currentUserId || calendarConnectionStatus !== 'connected') return;
     await syncPendingCalendarOccurrences();
   });
 

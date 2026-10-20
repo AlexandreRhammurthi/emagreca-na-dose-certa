@@ -209,7 +209,7 @@ function initializeGoogleCalendarIntegration() {
     const connection = await controller.loadConnection();
     if (sequence !== sessionSequence || currentUserId !== userId) return;
     document.dispatchEvent(new CustomEvent('dosecerta:google-calendar-connection', {
-      detail: { connectionStatus: connection?.connection_status || 'disconnected' }
+      detail: { userId, connectionStatus: connection?.connection_status || 'disconnected' }
     }));
     if (!oauthReturn.result || oauthResultProcessed) return;
     oauthResultProcessed = true;
