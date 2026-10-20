@@ -8,6 +8,10 @@
   const content = document.getElementById('plan-content');
   const nextContent = document.getElementById('plan-next-content');
   const list = document.getElementById('plan-list');
+  const overdue = document.getElementById('plan-overdue');
+  const overdueList = document.getElementById('plan-overdue-list');
+  const nextCard = document.getElementById('plan-next-card');
+  const upcomingSection = document.querySelector('.plan-upcoming');
   const calendar = document.getElementById('plan-calendar');
   const calendarGrid = document.getElementById('plan-calendar-grid');
   const calendarTitle = document.getElementById('plan-calendar-title');
@@ -41,6 +45,7 @@
   let cancellingId = null;
   let calendarYear = null;
   let calendarMonth = null;
+  const syncInFlight = new Set();
 
   function populateMedicineSelect() {
     const select = form.elements.medicine;
@@ -164,6 +169,13 @@
     const today = todayCivil();
     if (record.scheduled_date !== today) return record.scheduled_date > today;
     return formatTime(record.scheduled_time) >= currentTime();
+  }
+
+  function isOverdue(record) {
+    if (record.status !== 'scheduled') return false;
+    const today = todayCivil();
+    if (record.scheduled_date !== today) return record.scheduled_date < today;
+    return formatTime(record.scheduled_time) < currentTime();
   }
 
   function compareOccurrences(first, second) {
@@ -376,7 +388,7 @@
     const confirm = document.createElement('button');
     confirm.type = 'button';
     confirm.className = 'primary-action plan-confirm-action';
-    confirm.textContent = 'Confirmar aplicação';
+    confirm.textContent = isOverdue(record) ? 'Registrar agora' : 'Confirmar aplicação';
     confirm.addEventListener('click', () => {
       const plan = planFor(record);
       if (!plan || typeof window.Diary?.openScheduledConfirmation !== 'function') {
@@ -486,6 +498,9 @@
 
   function renderEmpty() {
     content.hidden = true;
+    overdue.hidden = true;
+    nextCard.hidden = false;
+    upcomingSection.hidden = false;
     status.hidden = false;
     status.textContent = 'Você ainda não possui aplicações agendadas.';
     const button = document.createElement('button');
@@ -498,15 +513,53 @@
 
   function render() {
     const upcoming = [...occurrences.values()].filter(isUpcoming).sort(compareOccurrences);
-    if (!upcoming.length) {
+    const overdueRecords = [...occurrences.values()].filter(isOverdue).sort(compareOccurrences);
+    if (!upcoming.length && !overdueRecords.length) {
       renderEmpty();
       return;
     }
     status.hidden = true;
     content.hidden = false;
-    renderNext(upcoming[0]);
+    overdue.hidden = !overdueRecords.length;
+    overdueList.replaceChildren(...overdueRecords.map(makeOccurrenceCard));
+    nextCard.hidden = !upcoming.length;
+    upcomingSection.hidden = !upcoming.length;
+    if (upcoming.length) renderNext(upcoming[0]);
+    else nextContent.replaceChildren();
     list.replaceChildren(...upcoming.map(makeOccurrenceCard));
     renderCalendar(upcoming);
+  }
+
+  async function syncOccurrences(records, { force = false } = {}) {
+    const candidates = [...new Map((records || [])
+      .filter((record) => record?.id && (force || record.google_sync_status !== 'synced'))
+      .map((record) => [record.id, record])).values()]
+      .filter((record) => !syncInFlight.has(record.id));
+    if (!candidates.length || !client || !currentUserId) return { attempted: 0, succeeded: 0 };
+
+    const connection = await client.from('google_calendar_connections').select('connection_status').maybeSingle();
+    if (connection.error || connection.data?.connection_status !== 'connected') return { attempted: 0, succeeded: 0, notConnected: true };
+
+    candidates.forEach((record) => syncInFlight.add(record.id));
+    const results = await Promise.allSettled(candidates.map(async (record) => {
+      const response = await client.functions.invoke('google-calendar-sync', {
+        body: { occurrence_id: record.id }
+      });
+      if (response.error || response.data?.success !== true) throw response.error || new Error('sync_failed');
+      return record.id;
+    }));
+    candidates.forEach((record) => syncInFlight.delete(record.id));
+    const succeeded = results.filter((result) => result.status === 'fulfilled').length;
+    const failed = results.length - succeeded;
+    if (failed) console.error('Meu Plano: falha ao sincronizar aplicações com Google Agenda.', { failed });
+    return { attempted: candidates.length, succeeded, failed };
+  }
+
+  async function syncPendingCalendarOccurrences() {
+    const pending = [...occurrences.values()].filter((record) => record.google_sync_status !== 'synced');
+    const sync = await syncOccurrences(pending);
+    if (sync.attempted && currentUserId) await loadData(currentUserId);
+    return sync;
   }
 
   async function loadData(userId) {
@@ -558,6 +611,8 @@
       return;
     }
     await loadData(nextUserId);
+    if (currentUserId !== nextUserId) return;
+    await syncPendingCalendarOccurrences();
   }
 
   form.elements.frequency_choice.addEventListener('change', () => {
@@ -645,9 +700,10 @@
         setMessage(formMessage, friendlyError(result.error, 'Não foi possível atualizar esta aplicação agendada.'));
         return;
       }
+      const sync = await syncOccurrences([result.data], { force: true });
       closeModal(formModal, false);
       await loadData(currentUserId);
-      showToast('Aplicação agendada atualizada.', 'success');
+      showToast(sync.failed ? 'Aplicação atualizada, mas não foi possível sincronizar com o Google Agenda.' : 'Aplicação agendada atualizada.', sync.failed ? 'info' : 'success');
       return;
     }
 
@@ -742,8 +798,10 @@
     submit.disabled = false;
     submit.classList.remove('is-loading');
     closeModal(formModal, false);
+    const sync = await syncOccurrences(occurrenceResult.data);
     await loadData(currentUserId);
-    showToast(frequencyType === 'once' ? 'Aplicação agendada com sucesso.' : 'Plano criado com 12 aplicações agendadas.', 'success');
+    const baseMessage = frequencyType === 'once' ? 'Aplicação agendada com sucesso.' : 'Plano criado com 12 aplicações agendadas.';
+    showToast(sync.failed ? `${baseMessage} Não foi possível sincronizar todas as aplicações com o Google Agenda.` : baseMessage, sync.failed ? 'info' : 'success');
   });
 
   cancelConfirmButton.addEventListener('click', async (event) => {
@@ -788,7 +846,7 @@
         setMessage(cancelMessage, friendlyError(result.error, 'Não foi possível cancelar esta aplicação agendada.'));
         return;
       }
-      succeeded = true;
+      succeeded = result.data;
     } catch (error) {
       console.error('[Plan Cancel] falha inesperada no cancelamento.', error);
       setMessage(cancelMessage, friendlyError(error, 'Não foi possível cancelar esta aplicação agendada.'));
@@ -800,12 +858,25 @@
     }
     if (!succeeded) return;
     closeModal(cancelModal, false);
+    const sync = await syncOccurrences([succeeded], { force: true });
     await loadData(currentUserId);
-    showToast('Aplicação agendada cancelada.', 'success');
+    showToast(sync.failed ? 'Aplicação cancelada, mas não foi possível atualizar o Google Agenda.' : 'Aplicação agendada cancelada.', sync.failed ? 'info' : 'success');
   });
 
-  document.addEventListener('dosecerta:application-confirmed', () => {
-    if (currentUserId) loadData(currentUserId);
+  document.addEventListener('dosecerta:application-confirmed', async (event) => {
+    if (!currentUserId) return;
+    await loadData(currentUserId);
+    const occurrence = occurrences.get(event.detail?.occurrenceId);
+    if (occurrence) {
+      await syncOccurrences([occurrence], { force: true });
+      await loadData(currentUserId);
+    }
+  });
+
+  document.addEventListener('dosecerta:google-calendar-connection', async (event) => {
+    if (!currentUserId || event.detail?.connectionStatus !== 'connected') return;
+    await loadData(currentUserId);
+    await syncPendingCalendarOccurrences();
   });
 
   window.PlanModule = Object.freeze({ addCivilDays, generateOccurrenceDates, openCreateWithDraft });

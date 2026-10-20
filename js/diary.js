@@ -683,6 +683,7 @@
       document.dispatchEvent(new CustomEvent('dosecerta:applications-changed'));
       document.dispatchEvent(new CustomEvent('dosecerta:application-confirmed', {
         detail: {
+          occurrenceId,
           applicationId: confirmed.application_id,
           weightRecordId: confirmed.weight_record_id || null,
           alreadyCompleted
