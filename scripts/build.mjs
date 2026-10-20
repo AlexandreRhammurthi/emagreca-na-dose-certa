@@ -31,6 +31,7 @@ const publicFiles = Object.freeze([
   'robots.txt',
   'sitemap.xml',
   'site.webmanifest',
+  'google8a94517067eeb00c.html',
   'assets/icons/application-vial.png',
   'assets/icons/weight-syringe.png',
   'assets/icons/weight-scale.png'

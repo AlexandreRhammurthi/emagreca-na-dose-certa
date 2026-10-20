@@ -6,6 +6,7 @@ const read = (file) => readFileSync(new URL(`../../../${file}`, import.meta.url)
 const index = read('index.html');
 const robots = read('robots.txt');
 const sitemap = read('sitemap.xml');
+const verification = read('google8a94517067eeb00c.html');
 const build = read('scripts/build.mjs');
 
 test('home possui metadados rastreáveis e estruturados coerentes com o conteúdo', () => {
@@ -24,4 +25,6 @@ test('robots e sitemap expõem apenas as páginas públicas pretendidas', () => 
   assert.match(build, /'robots\.txt'/);
   assert.match(build, /'sitemap\.xml'/);
   assert.match(build, /'site\.webmanifest'/);
+  assert.match(build, /'google8a94517067eeb00c\.html'/);
+  assert.equal(verification.trim(), 'google-site-verification: google8a94517067eeb00c.html');
 });
