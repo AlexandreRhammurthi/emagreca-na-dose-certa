@@ -164,7 +164,9 @@ export function createOAuthStartHandler(dependencies) {
       authorizationUrl.searchParams.set('state', state);
       authorizationUrl.searchParams.set('code_challenge', challenge);
       authorizationUrl.searchParams.set('code_challenge_method', 'S256');
-      if (connectionStatus !== 'connected') authorizationUrl.searchParams.set('prompt', 'consent');
+      // Ao trocar uma conexão existente, pedir explicitamente a escolha da conta.
+      // Sem isto o Google pode reutilizar silenciosamente a conta já autenticada.
+      authorizationUrl.searchParams.set('prompt', connectionStatus === 'connected' ? 'select_account consent' : 'consent');
 
       return jsonResponse(200, {
         authorization_url: authorizationUrl.toString(),

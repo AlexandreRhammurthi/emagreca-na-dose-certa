@@ -35,7 +35,8 @@ function elements() {
     status: fakeElement(),
     account: fakeElement(),
     message: fakeElement(),
-    action: fakeElement()
+    action: fakeElement(),
+    disconnect: fakeElement()
   };
 }
 
@@ -60,9 +61,10 @@ function clientWith({ connection = null, connectionError = null, session = true,
     functions: {
       async invoke(name, options) {
         calls.invokes += 1;
-        assert.equal(name, 'google-oauth-start');
         assert.deepEqual(options, { method: 'POST' });
-        return invoke ? invoke() : { data: null, error: new Error('not configured') };
+        if (name === 'google-calendar-disconnect') return invoke ? invoke(name) : { data: { success: true }, error: null };
+        assert.equal(name, 'google-oauth-start');
+        return invoke ? invoke(name) : { data: null, error: new Error('not configured') };
       }
     }
   };
@@ -99,6 +101,7 @@ const connectedConnection = await connected.controller.loadConnection();
 assert.equal(connected.ui.status.textContent, 'Conectado');
 assert.equal(connected.ui.account.textContent, 'Conta: ar***@gmail.com');
 assert.equal(connected.ui.action.textContent, 'Trocar conta');
+assert.equal(connected.ui.disconnect.hidden, false);
 assert.deepEqual(
   googleOAuthFeedback('connected', connectedConnection),
   ['Google Agenda conectado com sucesso.', 'success']
@@ -123,6 +126,18 @@ await switchAccount.controller.loadConnection();
 assert.equal(switchAccount.ui.action.textContent, 'Trocar conta');
 assert.equal(await switchAccount.controller.connect(), true);
 assert.equal(switchAccount.client.calls.invokes, 1, 'Trocar conta deve reutilizar o mesmo OAuth start');
+
+const disconnect = controllerFixture({
+  connection: { connection_status: 'connected', google_account_hint: 'ar***@gmail.com' },
+  invoke: async (name) => name === 'google-calendar-disconnect'
+    ? { data: { success: true }, error: null }
+    : { data: null, error: new Error('unexpected') }
+});
+await disconnect.controller.loadConnection();
+assert.equal(await disconnect.controller.disconnect(), true);
+assert.equal(disconnect.ui.status.textContent, 'Não conectado');
+assert.equal(disconnect.ui.disconnect.hidden, true);
+assert.deepEqual(disconnect.toasts.at(-1), ['Google Agenda desconectado. Os eventos já criados permanecem na Agenda.', 'info']);
 
 const stateExpectations = {
   expired: ['Conexão expirada', 'É necessário reconectar sua conta Google.', 'Reconectar'],

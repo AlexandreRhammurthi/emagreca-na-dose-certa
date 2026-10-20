@@ -89,6 +89,8 @@ export function createGoogleCalendarController({ client, elements, showToast, na
       elements.message.hidden = true;
       elements.action.textContent = 'Aguarde...';
       elements.action.disabled = true;
+      elements.disconnect.hidden = true;
+      elements.disconnect.disabled = true;
       return;
     }
     const view = connectionView(connection);
@@ -101,6 +103,8 @@ export function createGoogleCalendarController({ client, elements, showToast, na
     elements.message.hidden = !view.message;
     elements.action.textContent = view.action;
     elements.action.disabled = false;
+    elements.disconnect.hidden = view.state !== 'connected';
+    elements.disconnect.disabled = view.state !== 'connected';
   }
 
   async function loadConnection() {
@@ -162,13 +166,44 @@ export function createGoogleCalendarController({ client, elements, showToast, na
     }
   }
 
+  async function disconnect() {
+    if (requestInFlight) return false;
+    requestInFlight = true;
+    elements.action.disabled = true;
+    elements.disconnect.disabled = true;
+    elements.disconnect.textContent = 'Desconectando...';
+    try {
+      const { data: sessionData, error: sessionError } = await client.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        showToast('Entre na sua conta para desconectar o Google Agenda.', 'info');
+        return false;
+      }
+      const { data, error } = await client.functions.invoke('google-calendar-disconnect', { method: 'POST' });
+      if (error || data?.success !== true) throw error || new Error('disconnect_failed');
+      render({ connection_status: 'disconnected' });
+      showToast('Google Agenda desconectado. Os eventos já criados permanecem na Agenda.', 'info');
+      return true;
+    } catch (error) {
+      logger.error('Google Agenda: não foi possível desconectar.', { code: error?.code || 'unknown' });
+      showToast('Não foi possível desconectar o Google Agenda. Tente novamente.', 'error');
+      return false;
+    } finally {
+      requestInFlight = false;
+      if (!elements.disconnect.hidden) {
+        elements.disconnect.disabled = false;
+        elements.disconnect.textContent = 'Desconectar';
+      }
+      if (!elements.action.disabled || elements.disconnect.hidden) elements.action.disabled = false;
+    }
+  }
+
   function reset() {
     loadSequence += 1;
     elements.card.hidden = true;
     elements.card.removeAttribute('data-connection-status');
   }
 
-  return Object.freeze({ loadConnection, connect, render, reset });
+  return Object.freeze({ loadConnection, connect, disconnect, render, reset });
 }
 
 function initializeGoogleCalendarIntegration() {
@@ -179,7 +214,8 @@ function initializeGoogleCalendarIntegration() {
     status: document.getElementById('google-calendar-status'),
     account: document.getElementById('google-calendar-account'),
     message: document.getElementById('google-calendar-message'),
-    action: document.getElementById('google-calendar-action')
+    action: document.getElementById('google-calendar-action'),
+    disconnect: document.getElementById('google-calendar-disconnect')
   };
   const section = document.getElementById('plan-section');
   if (!client || !section || Object.values(elements).some((element) => !element)) return;
@@ -199,8 +235,9 @@ function initializeGoogleCalendarIntegration() {
   let sessionSequence = 0;
 
   async function applySession(session) {
-    const sequence = ++sessionSequence;
     const userId = session?.user?.id || null;
+    if (userId === currentUserId && (!oauthReturn.result || oauthResultProcessed)) return;
+    const sequence = ++sessionSequence;
     currentUserId = userId;
     if (!userId) {
       controller.reset();
@@ -220,6 +257,13 @@ function initializeGoogleCalendarIntegration() {
   }
 
   elements.action.addEventListener('click', () => controller.connect());
+  elements.disconnect.addEventListener('click', async () => {
+    const disconnected = await controller.disconnect();
+    if (!disconnected || !currentUserId) return;
+    document.dispatchEvent(new CustomEvent('dosecerta:google-calendar-connection', {
+      detail: { userId: currentUserId, connectionStatus: 'disconnected' }
+    }));
+  });
   client.auth.onAuthStateChange((_event, session) => {
     window.setTimeout(() => applySession(session), 0);
   });

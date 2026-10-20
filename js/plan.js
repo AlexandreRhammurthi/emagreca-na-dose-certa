@@ -49,6 +49,7 @@
   let calendarConnectionUserId = null;
   let planDataLoaded = false;
   let pendingCalendarSyncInFlight = false;
+  let pendingCalendarRefresh = false;
   const syncInFlight = new Set();
 
   function populateMedicineSelect() {
@@ -567,7 +568,10 @@
     const pending = [...occurrences.values()].filter((record) => record.google_sync_status !== 'synced');
     try {
       const sync = await syncOccurrences(pending);
-      if (sync.attempted && currentUserId) await loadData(currentUserId);
+      if (sync.attempted && currentUserId) {
+        if (!formModal.hidden || !cancelModal.hidden) pendingCalendarRefresh = true;
+        else await loadData(currentUserId);
+      }
       return sync;
     } finally {
       pendingCalendarSyncInFlight = false;
@@ -635,7 +639,10 @@
     updateFrequencyField(true);
     if (form.elements.frequency_choice.value === 'custom') form.elements.frequency_interval.focus();
   });
-  registerButton.addEventListener('click', () => openCreate(registerButton));
+  registerButton.addEventListener('click', () => {
+    if (!currentUserId || requestInFlight) return;
+    openCreate(registerButton);
+  });
   navButton.addEventListener('click', () => {
     if (!currentUserId) return;
     section.hidden = false;
@@ -659,7 +666,13 @@
   });
 
   document.querySelectorAll('[data-plan-close]').forEach((button) => {
-    button.addEventListener('click', () => closeModal(button.dataset.planClose === 'form' ? formModal : cancelModal));
+    button.addEventListener('click', async () => {
+      closeModal(button.dataset.planClose === 'form' ? formModal : cancelModal);
+      if (pendingCalendarRefresh && currentUserId) {
+        pendingCalendarRefresh = false;
+        await loadData(currentUserId);
+      }
+    });
   });
 
   document.addEventListener('keydown', (event) => {

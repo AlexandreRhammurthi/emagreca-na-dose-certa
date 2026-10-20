@@ -21,6 +21,18 @@ test('retorno OAuth não recarrega o plano enquanto o usuário abre o agendament
   assert.match(plan, /if \(calendarConnectionStatus !== 'connected' \|\| !planDataLoaded \|\| pendingCalendarSyncInFlight\)/);
   assert.doesNotMatch(plan, /connectionStatus !== 'connected'\) return;\s*await loadData\(currentUserId\);/s);
   assert.match(plan, /if \(calendarConnectionUserId !== nextUserId\) calendarConnectionStatus = 'unknown'/);
+  assert.match(calendar, /if \(userId === currentUserId && \(!oauthReturn\.result \|\| oauthResultProcessed\)\) return;/);
+  assert.match(plan, /if \(!formModal\.hidden \|\| !cancelModal\.hidden\) pendingCalendarRefresh = true;/);
+});
+
+test('conexão pode ser desconectada sem expor credencial ao navegador', () => {
+  const disconnect = readFileSync(new URL('../../../supabase/functions/google-calendar-disconnect/index.ts', import.meta.url), 'utf8');
+  assert.match(html, /id="google-calendar-disconnect"/);
+  assert.match(calendar, /functions\.invoke\('google-calendar-disconnect', \{ method: 'POST' \}\)/);
+  assert.match(disconnect, /delete from private\.google_calendar_credentials/);
+  assert.match(disconnect, /connection_status = 'disconnected'/);
+  assert.match(disconnect, /google_sync_status = 'not_connected'/);
+  assert.doesNotMatch(disconnect, /GOOGLE_CLIENT_SECRET|refresh_token_ciphertext.*select/is);
 });
 
 test('alterações e confirmação usam sincronização forçada da ocorrência exata', () => {

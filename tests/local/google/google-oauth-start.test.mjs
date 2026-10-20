@@ -88,7 +88,7 @@ const connectedSuccess = await makeHandler({ getConnectionStatus: async () => 'c
   })
 );
 const connectedUrl = new URL((await connectedSuccess.json()).authorization_url);
-assert.equal(connectedUrl.searchParams.has('prompt'), false, 'conexão ativa não força novo consentimento');
+assert.equal(connectedUrl.searchParams.get('prompt'), 'select_account consent', 'troca de conta força a escolha explícita da conta Google');
 
 const options = await makeHandler()(new Request('https://function.test', {
   method: 'OPTIONS',
