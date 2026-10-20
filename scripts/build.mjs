@@ -28,6 +28,9 @@ const publicFiles = Object.freeze([
   'privacy.html',
   'project-delivery-pipeline.html',
   'terms.html',
+  'robots.txt',
+  'sitemap.xml',
+  'site.webmanifest',
   'assets/icons/application-vial.png',
   'assets/icons/weight-syringe.png',
   'assets/icons/weight-scale.png'

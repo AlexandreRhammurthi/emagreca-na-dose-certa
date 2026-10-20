@@ -1,0 +1,10 @@
+{
+  "name": "Dose Certa",
+  "short_name": "Dose Certa",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f8f4",
+  "theme_color": "#174841",
+  "description": "Ferramenta educativa para visualizar a conversão de uma dose prescrita em seringa U-100."
+}
