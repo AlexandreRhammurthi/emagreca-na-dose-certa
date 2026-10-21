@@ -54,6 +54,9 @@ test('calendário abre o agendamento pela data e mostra detalhes acionáveis qua
   assert.match(html, /id="plan-calendar-details-modal"/);
   assert.match(html, /id="plan-calendar-details-content"/);
   assert.match(plan, /function openCreateForDate\(dateValue, trigger\)/);
+  assert.match(plan, /function applyReusablePlanDefaults\(\)/);
+  assert.match(plan, /applyReusablePlanDefaults\(\);/);
+  assert.match(plan, /function resetSubmitState\(\)/);
   assert.match(plan, /if \(dayRecords\.length\) openCalendarDetails\(dateValue, dayRecords, button\);/);
   assert.match(plan, /else openCreateForDate\(dateValue, button\);/);
   assert.match(plan, /button\.style\.cursor = isActionable \? 'pointer' : 'default';/);
@@ -61,6 +64,12 @@ test('calendário abre o agendamento pela data e mostra detalhes acionáveis qua
   assert.match(plan, /edit\.textContent = 'Editar'/);
   assert.match(plan, /remove\.textContent = 'Excluir agendamento'/);
   assert.match(plan, /openCancel\(record, remove\)/);
+});
+
+test('agendamento aberto pelo calendário recupera a ação e orienta campos obrigatórios', () => {
+  assert.match(plan, /requestInFlight = false;/);
+  assert.match(plan, /form\.elements\.medicine\.focus\(\);/);
+  assert.match(plan, /form\.elements\.dose_mg\.focus\(\);/);
 });
 
 console.log('CALENDAR RELIABILITY CONTRACT TESTS: PASS');

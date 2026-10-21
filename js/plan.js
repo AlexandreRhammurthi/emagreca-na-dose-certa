@@ -303,8 +303,30 @@
     }
   }
 
+  function resetSubmitState() {
+    requestInFlight = false;
+    const submit = form.querySelector('[type="submit"]');
+    submit.disabled = false;
+    submit.classList.remove('is-loading');
+  }
+
+  function latestActivePlan() {
+    return [...plans.values()]
+      .filter((plan) => plan.active)
+      .sort((first, second) => String(first.created_at || '').localeCompare(String(second.created_at || '')))
+      .at(-1) || null;
+  }
+
+  function applyReusablePlanDefaults() {
+    const plan = latestActivePlan();
+    if (!plan) return;
+    selectMedicine(plan.medicine);
+    form.elements.dose_mg.value = Number(plan.dose_mg).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+  }
+
   function setFormMode(record = null) {
     editingId = record?.id || null;
+    resetSubmitState();
     form.reset();
     form.elements.occurrence_id.value = editingId || '';
     form.querySelectorAll('.plan-create-only').forEach((element) => { element.hidden = Boolean(record); });
@@ -325,6 +347,7 @@
       form.elements.scheduled_time.value = '09:00';
       form.elements.frequency_choice.value = 'once';
       setSelectedReminders([1440, 120, 15, 0]);
+      applyReusablePlanDefaults();
     }
     form.elements.scheduled_date.min = todayCivil();
     setMessage(formMessage);
@@ -799,6 +822,9 @@
       submit.disabled = false;
       submit.classList.remove('is-loading');
       setMessage(formMessage, !timezone ? 'Não foi possível identificar uma timezone válida no navegador.' : 'Preencha medicamento, dose e frequência com valores válidos.');
+      if (!medicine) form.elements.medicine.focus();
+      else if (Number.isNaN(doseMg)) form.elements.dose_mg.focus();
+      else if (frequencyType === 'days' && (!Number.isInteger(frequencyInterval) || frequencyInterval < 1 || frequencyInterval > 365)) form.elements.frequency_interval.focus();
       return;
     }
     const expectedOccurrenceTotal = frequencyType === 'once' ? 1 : 12;
