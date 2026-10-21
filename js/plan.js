@@ -20,6 +20,9 @@
   const navButton = document.getElementById('plan-nav');
   const registerButton = document.getElementById('plan-register');
   const formModal = document.getElementById('plan-form-modal');
+  const calendarDetailsModal = document.getElementById('plan-calendar-details-modal');
+  const calendarDetailsDate = document.getElementById('plan-calendar-details-date');
+  const calendarDetailsContent = document.getElementById('plan-calendar-details-content');
   const cancelModal = document.getElementById('plan-cancel-modal');
   const form = document.getElementById('plan-form');
   const formMessage = document.getElementById('plan-form-message');
@@ -265,7 +268,7 @@
     modal.hidden = true;
     if (modal === formModal) editingId = null;
     if (modal === cancelModal) cancellingId = null;
-    if (formModal.hidden && cancelModal.hidden) document.body.classList.remove('auth-modal-open');
+    if (formModal.hidden && calendarDetailsModal.hidden && cancelModal.hidden) document.body.classList.remove('auth-modal-open');
     if (restoreFocus) modalReturnFocus.get(modal)?.focus();
   }
 
@@ -334,6 +337,16 @@
     openModal(formModal, trigger);
   }
 
+  function openCreateForDate(dateValue, trigger) {
+    if (dateValue < todayCivil()) {
+      showToast('Só é possível agendar aplicações para hoje ou uma data futura.', 'info');
+      return;
+    }
+    setFormMode();
+    form.elements.scheduled_date.value = dateValue;
+    openModal(formModal, trigger);
+  }
+
   function selectMedicine(value) {
     const normalized = String(value || '').trim().toLocaleLowerCase('pt-BR');
     const option = [...form.elements.medicine.options].find((item) => item.value.toLocaleLowerCase('pt-BR') === normalized
@@ -361,6 +374,49 @@
     cancellingId = record.id;
     setMessage(cancelMessage);
     openModal(cancelModal, trigger);
+  }
+
+  function openCalendarDetails(dateValue, records, trigger) {
+    calendarDetailsDate.textContent = formatCivilDate(dateValue, true);
+    calendarDetailsContent.replaceChildren();
+    records.sort(compareOccurrences).forEach((record) => {
+      const plan = planFor(record);
+      const item = document.createElement('article');
+      item.className = 'plan-calendar-modal-item';
+      const time = document.createElement('p');
+      time.className = 'plan-calendar-modal-time';
+      time.textContent = formatTime(record.scheduled_time);
+      const medicine = document.createElement('h3');
+      medicine.textContent = plan?.medicine || 'Plano indisponível';
+      const dose = document.createElement('p');
+      dose.textContent = plan ? formatDose(plan.dose_mg) : 'Dose não disponível';
+      const site = siteForOccurrence(record);
+      const rotation = document.createElement('p');
+      rotation.className = 'plan-calendar-modal-note';
+      rotation.textContent = site ? `Rodízio sugerido: ${siteLabel(site)}` : 'Rodízio será definido ao agendar.';
+      const actions = document.createElement('div');
+      actions.className = 'dialog-actions plan-calendar-modal-actions';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'secondary-action';
+      edit.textContent = 'Editar';
+      edit.addEventListener('click', () => {
+        closeModal(calendarDetailsModal, false);
+        openEdit(record, edit);
+      });
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'danger-action';
+      remove.textContent = 'Excluir agendamento';
+      remove.addEventListener('click', () => {
+        closeModal(calendarDetailsModal, false);
+        openCancel(record, remove);
+      });
+      actions.append(edit, remove);
+      item.append(time, medicine, dose, rotation, actions);
+      calendarDetailsContent.appendChild(item);
+    });
+    openModal(calendarDetailsModal, trigger);
   }
 
   function planFor(record) {
@@ -444,19 +500,6 @@
     nextContent.append(date, medicine, dose, time, rotation, badge);
   }
 
-  function renderCalendarDayDetails(dateValue, records) {
-    calendarDayDetails.replaceChildren();
-    const heading = document.createElement('h4');
-    heading.textContent = formatCivilDate(dateValue, true);
-    calendarDayDetails.appendChild(heading);
-    records.forEach((record) => {
-      const plan = planFor(record);
-      const row = document.createElement('p');
-      row.textContent = `${formatTime(record.scheduled_time)} · ${plan?.medicine || 'Plano indisponível'} · ${plan ? formatDose(plan.dose_mg) : 'Dose não disponível'}`;
-      calendarDayDetails.appendChild(row);
-    });
-  }
-
   function renderCalendar(upcoming) {
     const [initialYear, initialMonth] = (upcoming[0]?.scheduled_date || todayCivil()).split('-').map(Number);
     if (!calendarYear || !calendarMonth) {
@@ -495,8 +538,11 @@
         marker.alt = '';
         marker.setAttribute('aria-hidden', 'true');
         button.appendChild(marker);
-        button.addEventListener('click', () => renderCalendarDayDetails(dateValue, dayRecords));
       }
+      button.addEventListener('click', () => {
+        if (dayRecords.length) openCalendarDetails(dateValue, dayRecords, button);
+        else openCreateForDate(dateValue, button);
+      });
       calendarGrid.appendChild(button);
     }
   }
@@ -532,7 +578,7 @@
     if (upcoming.length) renderNext(upcoming[0]);
     else nextContent.replaceChildren();
     list.replaceChildren(...upcoming.map(makeOccurrenceCard));
-    renderCalendar(upcoming);
+    renderCalendar([...upcoming, ...overdueRecords].sort(compareOccurrences));
   }
 
   async function syncOccurrences(records, { force = false } = {}) {
@@ -622,6 +668,7 @@
     occurrences.clear();
     siteRecords.clear();
     formModal.hidden = true;
+    calendarDetailsModal.hidden = true;
     cancelModal.hidden = true;
     document.body.classList.remove('auth-modal-open');
     section.hidden = !nextUserId;
@@ -657,17 +704,18 @@
   document.getElementById('plan-calendar-prev').addEventListener('click', () => {
     calendarMonth -= 1;
     if (calendarMonth < 1) { calendarMonth = 12; calendarYear -= 1; }
-    renderCalendar([...occurrences.values()].filter(isUpcoming).sort(compareOccurrences));
+    renderCalendar([...occurrences.values()].filter((record) => isUpcoming(record) || isOverdue(record)).sort(compareOccurrences));
   });
   document.getElementById('plan-calendar-next').addEventListener('click', () => {
     calendarMonth += 1;
     if (calendarMonth > 12) { calendarMonth = 1; calendarYear += 1; }
-    renderCalendar([...occurrences.values()].filter(isUpcoming).sort(compareOccurrences));
+    renderCalendar([...occurrences.values()].filter((record) => isUpcoming(record) || isOverdue(record)).sort(compareOccurrences));
   });
 
   document.querySelectorAll('[data-plan-close]').forEach((button) => {
     button.addEventListener('click', async () => {
-      closeModal(button.dataset.planClose === 'form' ? formModal : cancelModal);
+      const modal = { form: formModal, details: calendarDetailsModal, cancel: cancelModal }[button.dataset.planClose];
+      closeModal(modal);
       if (pendingCalendarRefresh && currentUserId) {
         pendingCalendarRefresh = false;
         await loadData(currentUserId);
@@ -676,7 +724,7 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    const activeModal = !cancelModal.hidden ? cancelModal : !formModal.hidden ? formModal : null;
+    const activeModal = !cancelModal.hidden ? cancelModal : !calendarDetailsModal.hidden ? calendarDetailsModal : !formModal.hidden ? formModal : null;
     if (!activeModal) return;
     if (event.key === 'Escape') {
       event.preventDefault();

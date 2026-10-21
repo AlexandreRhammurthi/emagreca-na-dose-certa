@@ -499,7 +499,7 @@
           </div>
           <div class="google-calendar-actions">
             <button class="secondary-action google-calendar-action" id="google-calendar-action" type="button" aria-busy="false">Conectar Google Agenda</button>
-            <button class="text-action google-calendar-disconnect" id="google-calendar-disconnect" type="button" hidden>Desconectar</button>
+            <button class="danger-action google-calendar-disconnect" id="google-calendar-disconnect" type="button" hidden>Desconectar</button>
           </div>
         </article>
         <div class="plan-content" id="plan-content" hidden>
@@ -696,6 +696,17 @@
             <button class="primary-action diary-submit" type="submit"><span id="plan-submit-label">Agendar aplicação</span><span class="button-loader" aria-hidden="true"></span></button>
           </div>
         </form>
+      </section>
+    </div>
+
+    <div class="diary-modal" id="plan-calendar-details-modal" hidden>
+      <div class="diary-backdrop" data-plan-close="details"></div>
+      <section class="diary-dialog diary-dialog-small" role="dialog" aria-modal="true" aria-labelledby="plan-calendar-details-title" tabindex="-1">
+        <button class="auth-close" type="button" data-plan-close="details" aria-label="Fechar detalhes do agendamento">×</button>
+        <p class="auth-eyebrow">MEU PLANO</p>
+        <h2 id="plan-calendar-details-title">Detalhes do agendamento</h2>
+        <p class="auth-subtitle" id="plan-calendar-details-date"></p>
+        <div class="plan-calendar-modal-list" id="plan-calendar-details-content"></div>
       </section>
     </div>
 

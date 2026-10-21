@@ -13,7 +13,7 @@ const effects = read('js/effects.js');
 const onboarding = read('js/onboarding.js');
 
 test('todos os pop-ups possuem rota explícita de fechamento', () => {
-  for (const id of ['application-form-modal', 'application-future-modal', 'application-details-modal', 'application-delete-modal', 'weight-form-modal', 'weight-delete-modal', 'plan-form-modal', 'plan-cancel-modal', 'medication-vial-modal', 'medication-vial-replacement-modal', 'measurements-form-modal', 'effects-form-modal', 'onboarding-modal', 'account-delete-modal']) {
+  for (const id of ['application-form-modal', 'application-future-modal', 'application-details-modal', 'application-delete-modal', 'weight-form-modal', 'weight-delete-modal', 'plan-form-modal', 'plan-calendar-details-modal', 'plan-cancel-modal', 'medication-vial-modal', 'medication-vial-replacement-modal', 'measurements-form-modal', 'effects-form-modal', 'onboarding-modal', 'account-delete-modal']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   for (const selector of ['data-diary-close', 'data-weight-close', 'data-weight-delete-close', 'data-plan-close', 'data-vial-close', 'data-vial-replacement-close', 'data-measurements-close', 'data-effects-close', 'data-account-delete-close']) assert.match(html, new RegExp(selector));
