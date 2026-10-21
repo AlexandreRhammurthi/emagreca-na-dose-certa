@@ -7,6 +7,7 @@
     <meta name="description" content="Console administrativo interno do Dose Certa." />
     <title>Dose Certa — Administração</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>.admin-census-grid{grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:0}.admin-census-grid h3{margin:0 0 12px;font:800 14px Manrope;color:var(--ink)}@media(max-width:760px){.admin-census-grid{grid-template-columns:1fr}}</style>
   </head>
   <body class="admin-page">
     <header class="topbar admin-topbar">
@@ -47,8 +48,10 @@
           <section class="admin-card" aria-labelledby="admin-adoption-title"><h2 id="admin-adoption-title">Adoção da primeira ação</h2><p class="admin-card-note">Distribuição entre os recursos observáveis no V1.</p><ul class="admin-adoption" id="admin-adoption"></ul></section>
         </div>
 
+        <section class="admin-card" aria-labelledby="admin-census-title"><h2 id="admin-census-title">Censo de pessoas</h2><p class="admin-card-note" id="admin-census-note"></p><div class="admin-grid admin-census-grid"><section aria-labelledby="admin-census-gender-title"><h3 id="admin-census-gender-title">Sexo</h3><ul class="admin-adoption" id="admin-census-gender"></ul></section><section aria-labelledby="admin-census-age-title"><h3 id="admin-census-age-title">Faixa etária</h3><ul class="admin-adoption" id="admin-census-age"></ul></section><section aria-labelledby="admin-census-city-title"><h3 id="admin-census-city-title">Cidade</h3><ul class="admin-adoption" id="admin-census-city"></ul></section></div></section>
+
         <section class="admin-card" aria-labelledby="admin-insights-title"><h2 id="admin-insights-title">Insights para evolução</h2><p class="admin-card-note">Alertas exigem coorte mínima de 30 contas e comparam 7 dias recentes ao histórico anterior.</p><div id="admin-insights"></div></section>
-        <p class="admin-disclaimer">Este painel apresenta somente contagens e percentuais agregados. Não exibe usuários, eventos individuais nem dados de saúde.</p>
+        <p class="admin-disclaimer">Este painel apresenta somente contagens e percentuais agregados. Não exibe usuários, eventos individuais, dados de saúde ou perfis identificáveis.</p>
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

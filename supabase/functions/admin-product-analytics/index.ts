@@ -4,9 +4,11 @@ const ALLOWED_ORIGINS = new Set(['http://localhost:8000', 'https://emagrecanados
 const EVENT_NAMES = new Set(['account_created', 'onboarding_completed', 'first_product_action', 'product_returned']);
 const ACTION_KINDS = new Set(['application', 'weight', 'plan', 'google_calendar']);
 const RETENTION_DAYS = 30;
+const CENSUS_MIN_GROUP_SIZE = 5;
 
 type ProductEvent = { user_id: string; event_name: string; action_kind: string; simulated_in_session: boolean; event_day: string };
 type ProfileAccount = { id: string; created_at: string };
+type CensusProfile = { date_of_birth: string | null; gender: string | null; city: string | null; state: string | null };
 
 function corsHeaders(origin: string | null) {
   const headers: Record<string, string> = {
@@ -44,6 +46,60 @@ function nextDay(day: string, days: number) { const value = new Date(`${day}T00:
 function ratio(numerator: number, denominator: number) { return denominator > 0 ? Number((numerator / denominator).toFixed(4)) : 0; }
 function uniqueUsers(events: ProductEvent[]) { return new Set(events.map((event) => event.user_id)); }
 
+function ageBand(dateOfBirth: string | null, today: Date) {
+  if (!dateOfBirth || !/^\d{4}-\d{2}-\d{2}$/.test(dateOfBirth)) return null;
+  const [year, month, day] = dateOfBirth.split('-').map(Number);
+  let age = today.getUTCFullYear() - year;
+  if (today.getUTCMonth() + 1 < month || (today.getUTCMonth() + 1 === month && today.getUTCDate() < day)) age -= 1;
+  if (age < 18 || age > 120) return null;
+  if (age <= 24) return '18–24 anos';
+  if (age <= 34) return '25–34 anos';
+  if (age <= 44) return '35–44 anos';
+  if (age <= 54) return '45–54 anos';
+  if (age <= 64) return '55–64 anos';
+  return '65 anos ou mais';
+}
+
+function aggregateCensus(values: Array<string | null>) {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    if (!value) continue;
+    counts.set(value, (counts.get(value) || 0) + 1);
+  }
+  const visible = [...counts.entries()]
+    .filter(([, count]) => count >= CENSUS_MIN_GROUP_SIZE)
+    .sort(([leftLabel, leftCount], [rightLabel, rightCount]) => rightCount - leftCount || leftLabel.localeCompare(rightLabel, 'pt-BR'))
+    .map(([label, count]) => ({ label, count }));
+  const suppressed = [...counts.values()].filter((count) => count < CENSUS_MIN_GROUP_SIZE).reduce((sum, count) => sum + count, 0);
+  if (suppressed) visible.push({ label: 'Outros grupos', count: suppressed });
+  return visible;
+}
+
+function censusGenderLabel(gender: string | null) {
+  return ({ woman_cis_trans: 'Mulher (Cis ou Trans)', man_cis_trans: 'Homem (Cis ou Trans)', non_binary: 'Não-binário', prefer_not_to_answer: 'Prefiro não responder', other: 'Outro' } as Record<string, string>)[gender || ''] || null;
+}
+
+function censusCityLabel(city: string | null, state: string | null) {
+  const normalizedCity = city?.trim().replace(/\s+/g, ' ');
+  const normalizedState = state?.trim().toUpperCase();
+  return normalizedCity ? `${normalizedCity}${normalizedState ? ` — ${normalizedState}` : ''}` : null;
+}
+
+async function loadCensusProfiles(serverClient: ReturnType<typeof createClient>) {
+  const profiles: CensusProfile[] = [];
+  const pageSize = 1000;
+  for (let start = 0; ; start += pageSize) {
+    const { data, error } = await serverClient.from('onboarding_profiles')
+      .select('date_of_birth,gender,city,state')
+      .not('completed_at', 'is', null)
+      .range(start, start + pageSize - 1);
+    if (error) throw new Error('census_query_failed');
+    const page = (data || []).filter((profile): profile is CensusProfile => typeof profile === 'object' && profile !== null);
+    profiles.push(...page);
+    if (page.length < pageSize) return profiles;
+  }
+}
+
 function buildInsights(metrics: Record<string, number>, recentAccounts: number, previousAccounts: number) {
   if (recentAccounts < 30) return [];
   const insights: Array<{ title: string; message: string; recommendation: string }> = [];
@@ -77,12 +133,17 @@ Deno.serve(async (request) => {
     const startDay = previousDay(endDay, RETENTION_DAYS - 1);
     const { error: cleanupError } = await serverClient.from('product_events').delete().lt('occurred_at', `${cutoff}T00:00:00.000Z`);
     if (cleanupError) throw new Error('retention_cleanup_failed');
+    const { count: totalRegisteredUsers, error: totalAccountsError } = await serverClient
+      .from('profiles')
+      .select('*', { count: 'exact', head: true });
+    if (totalAccountsError) throw new Error('total_accounts_query_failed');
     const { data: profileData, error: profileError } = await serverClient
       .from('profiles')
       .select('id,created_at')
       .gte('created_at', `${startDay}T00:00:00.000Z`)
       .lt('created_at', `${nextDay(endDay, 1)}T00:00:00.000Z`);
     if (profileError) throw new Error('account_cohort_query_failed');
+    const censusProfiles = await loadCensusProfiles(serverClient);
     const { data, error } = await serverClient.from('product_events').select('user_id,event_name,action_kind,simulated_in_session,event_day').gte('event_day', startDay).lte('event_day', endDay);
     if (error) throw new Error('aggregate_query_failed');
 
@@ -104,7 +165,16 @@ Deno.serve(async (request) => {
     const priorStart = previousDay(endDay, 13);
     const recentAccounts = accounts.filter((account) => isoDay(new Date(account.created_at)) >= recentStart).length;
     const previousAccounts = accounts.filter((account) => { const day = isoDay(new Date(account.created_at)); return day >= priorStart && day < recentStart; }).length;
+    const census = {
+      total_registered_users: totalRegisteredUsers || 0,
+      profiled_users: censusProfiles.length,
+      minimum_group_size: CENSUS_MIN_GROUP_SIZE,
+      gender: aggregateCensus(censusProfiles.map((profile) => censusGenderLabel(profile.gender))),
+      age_bands: aggregateCensus(censusProfiles.map((profile) => ageBand(profile.date_of_birth, new Date()))),
+      cities: aggregateCensus(censusProfiles.map((profile) => censusCityLabel(profile.city, profile.state)))
+    };
     const metrics = {
+      total_registered_users: census.total_registered_users,
       new_accounts: accounts.length,
       onboarding_completed: onboardingUsers.size,
       first_product_action: actionUsers.size,
@@ -124,6 +194,7 @@ Deno.serve(async (request) => {
       metrics,
       funnel: { account_created: accountUsers.size, onboarding_completed: onboardingUsers.size, first_product_action: actionUsers.size, product_returned: returnUsers.size },
       adoption,
+      census,
       insights: buildInsights(metrics, recentAccounts, previousAccounts)
     }, 200, origin);
   } catch (error) {

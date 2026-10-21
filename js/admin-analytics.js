@@ -42,6 +42,7 @@
   function renderMetrics(metrics, accountCohortAvailable, simulationTelemetryAvailable) {
     const unavailableNote = 'Indisponível sem coorte de novas contas';
     const cards = [
+      ['Total de usuários', formatNumber(metrics.total_registered_users), 'Todas as contas cadastradas'],
       ['Novas contas', formatNumber(metrics.new_accounts), 'Contas criadas no período'],
       ['Conclusão de onboarding', formatPercent(metrics.onboarding_completion_rate), accountCohortAvailable ? `${formatNumber(metrics.onboarding_completed)} usuários` : unavailableNote],
       ['Ativação', formatPercent(metrics.activation_rate), accountCohortAvailable ? `${formatNumber(metrics.first_product_action)} primeira ação` : unavailableNote],
@@ -74,6 +75,26 @@
     }));
   }
 
+  function renderCensusRows(targetId, values) {
+    const target = document.getElementById(targetId);
+    if (!values?.length) {
+      target.replaceChildren(textElement('p', 'Dados insuficientes para exibir grupos preservando a privacidade.', 'admin-empty'));
+      return;
+    }
+    target.replaceChildren(...values.map((item) => {
+      const row = textElement('li', '', 'admin-adoption-row');
+      row.append(textElement('span', item.label), textElement('strong', formatNumber(item.count)));
+      return row;
+    }));
+  }
+
+  function renderCensus(census) {
+    document.getElementById('admin-census-note').textContent = `${formatNumber(census.profiled_users)} perfis concluídos. Categorias com menos de ${formatNumber(census.minimum_group_size)} pessoas são agrupadas.`;
+    renderCensusRows('admin-census-gender', census.gender);
+    renderCensusRows('admin-census-age', census.age_bands);
+    renderCensusRows('admin-census-city', census.cities);
+  }
+
   function renderInsights(insights, sufficientData) {
     const target = document.getElementById('admin-insights');
     if (!sufficientData) {
@@ -96,6 +117,7 @@
     renderMetrics(data.metrics, Boolean(data.account_cohort_available), Boolean(data.simulation_telemetry_available));
     renderFunnel(data.funnel);
     renderAdoption(data.adoption);
+    renderCensus(data.census);
     renderInsights(data.insights, data.sufficient_data);
   }
 

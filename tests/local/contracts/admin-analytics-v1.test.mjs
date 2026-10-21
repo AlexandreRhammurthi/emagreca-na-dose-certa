@@ -12,6 +12,9 @@ test('admin page é separada, acessível e não contém credencial administrativ
   assert.match(page, /id="admin-dashboard"/);
   assert.match(page, /role="status" aria-live="polite"/);
   assert.match(page, /id="admin-signout"/);
+  assert.match(page, /id="admin-census-gender"/);
+  assert.match(page, /id="admin-census-age"/);
+  assert.match(page, /id="admin-census-city"/);
   assert.doesNotMatch(page, /arbandeira@gmail\.com|ADMIN_ANALYTICS_ALLOWED_EMAIL|service_role|sb_secret_/i);
 });
 
@@ -35,11 +38,25 @@ test('Edge Function protege acesso no servidor e retorna somente agregados', () 
   assert.match(edgeFunction, /\.from\('profiles'\)/);
   assert.match(edgeFunction, /select\('id,created_at'\)/);
   assert.match(edgeFunction, /new_accounts: accounts\.length/);
+  assert.match(edgeFunction, /total_registered_users: census\.total_registered_users/);
+  assert.match(edgeFunction, /minimum_group_size: CENSUS_MIN_GROUP_SIZE/);
+  assert.match(edgeFunction, /select\('date_of_birth,gender,city,state'\)/);
+  assert.match(edgeFunction, /count >= CENSUS_MIN_GROUP_SIZE/);
+  assert.match(edgeFunction, /cities: aggregateCensus/);
   assert.match(edgeFunction, /const accountUsers = new Set\(accounts\.map/);
   assert.match(edgeFunction, /d7Eligible\.map\(\(account\) => account\.id\)/);
   assert.match(edgeFunction, /account_cohort_available: accountUsers\.size > 0/);
   assert.doesNotMatch(edgeFunction, /cohortEvents\(/);
   assert.doesNotMatch(edgeFunction, /return response\([^\n]*user_id|return response\([^\n]*email/i);
+});
+
+test('cliente renderiza somente os agrupamentos demográficos agregados', () => {
+  assert.match(client, /function renderCensus\(census\)/);
+  assert.match(client, /renderCensusRows\('admin-census-gender', census\.gender\)/);
+  assert.match(client, /renderCensusRows\('admin-census-age', census\.age_bands\)/);
+  assert.match(client, /renderCensusRows\('admin-census-city', census\.cities\)/);
+  assert.match(client, /metrics\.total_registered_users/);
+  assert.doesNotMatch(client, /date_of_birth|gender_other|city.*state.*user_id/i);
 });
 
 test('painel não apresenta taxa de coorte inexistente como zero por cento', () => {
