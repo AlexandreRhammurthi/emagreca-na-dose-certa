@@ -56,6 +56,7 @@ test('calendário abre o agendamento pela data e mostra detalhes acionáveis qua
   assert.match(plan, /function openCreateForDate\(dateValue, trigger\)/);
   assert.match(plan, /if \(dayRecords\.length\) openCalendarDetails\(dateValue, dayRecords, button\);/);
   assert.match(plan, /else openCreateForDate\(dateValue, button\);/);
+  assert.match(plan, /button\.style\.cursor = isActionable \? 'pointer' : 'default';/);
   assert.match(plan, /function openCalendarDetails\(dateValue, records, trigger\)/);
   assert.match(plan, /edit\.textContent = 'Editar'/);
   assert.match(plan, /remove\.textContent = 'Excluir agendamento'/);

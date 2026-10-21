@@ -524,7 +524,9 @@
       const dayRecords = upcoming.filter((record) => record.scheduled_date === dateValue);
       const button = document.createElement('button');
       button.type = 'button';
+      const isActionable = dayRecords.length > 0 || dateValue >= todayCivil();
       button.className = `plan-calendar-day${dayRecords.length ? ' has-applications' : ''}`;
+      button.style.cursor = isActionable ? 'pointer' : 'default';
       button.setAttribute('role', 'gridcell');
       button.setAttribute('aria-label', dayRecords.length
         ? `${formatCivilDate(dateValue)}, ${dayRecords.length} ${dayRecords.length === 1 ? 'aplicação agendada' : 'aplicações agendadas'}`
