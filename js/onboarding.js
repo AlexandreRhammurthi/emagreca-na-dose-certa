@@ -5,7 +5,7 @@
   const modal = document.getElementById('onboarding-modal');
   const form = document.getElementById('onboarding-form');
   if (!modal || !form) return;
-  const state = { user: null, profile: null, step: 1, loading: false };
+  const state = { user: null, profile: null, profileStatus: 'unknown', profilePromise: null, step: 1, loading: false };
   const steps = [...modal.querySelectorAll('[data-step]')];
   const message = document.getElementById('onboarding-message');
   const next = document.getElementById('onboarding-next');
@@ -57,9 +57,25 @@
   const close = () => { modal.hidden = true; document.body.classList.remove('auth-modal-open'); };
   async function loadProfile() {
     if (!client || !state.user) return null;
-    const { data, error } = await client.from('onboarding_profiles').select('*').eq('user_id', state.user.id).maybeSingle();
-    if (error && error.code !== 'PGRST116') { console.error('Onboarding: perfil indisponível.', { code: error.code || 'unknown' }); return null; }
-    state.profile = data; return data;
+    if (state.profilePromise) return state.profilePromise;
+    const userId = state.user.id;
+    state.profileStatus = 'loading';
+    state.profilePromise = client.from('onboarding_profiles').select('*').eq('user_id', userId).maybeSingle()
+      .then(({ data, error }) => {
+        if (state.user?.id !== userId) return null;
+        if (error && error.code !== 'PGRST116') {
+          console.error('Onboarding: perfil indisponível.', { code: error.code || 'unknown' });
+          state.profileStatus = 'error';
+          return null;
+        }
+        state.profile = data;
+        state.profileStatus = data?.completed_at ? 'ready' : 'missing';
+        return data;
+      })
+      .finally(() => {
+        if (state.user?.id === userId) state.profilePromise = null;
+      });
+    return state.profilePromise;
   }
   const fill = (profile) => {
     if (!profile) return;
@@ -68,6 +84,17 @@
   };
   function requireProfile(event) {
     if (!state.user) { event.preventDefault(); event.stopImmediatePropagation(); window.openOnboardingSignupGate?.(); return; }
+    if (state.profileStatus === 'loading' || state.profileStatus === 'unknown') {
+      const control = event.currentTarget;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      loadProfile().then((profile) => {
+        if (!state.user || control.disabled) return;
+        if (profile?.completed_at) control.click();
+        else open();
+      });
+      return;
+    }
     if (!state.profile?.completed_at) { event.preventDefault(); event.stopImmediatePropagation(); open(); }
   }
   function requireSimulationProfile(event) {
@@ -161,7 +188,18 @@
     document.getElementById('account-delete-modal').hidden = true;
     resetAccountDeletionModal();
   }
-  document.addEventListener('dosecerta:auth-session', async ({ detail }) => { state.user = detail?.user || null; state.profile = null; if (!state.user) { close(); return; } await loadProfile(); fill(state.profile); });
+  document.addEventListener('dosecerta:auth-session', async ({ detail }) => {
+    const nextUser = detail?.user || null;
+    if (nextUser?.id !== state.user?.id) {
+      state.user = nextUser;
+      state.profile = null;
+      state.profileStatus = nextUser ? 'unknown' : 'missing';
+      state.profilePromise = null;
+    }
+    if (!state.user) { close(); return; }
+    await loadProfile();
+    fill(state.profile);
+  });
   document.addEventListener('dosecerta:simulation', ({ detail }) => { if (detail && !state.user) window.openOnboardingSignupGate?.(); });
   document.getElementById('dose-form')?.addEventListener('click', requireSimulationProfile, true);
   ['diary-nav', 'weight-nav', 'plan-nav', 'register-application', 'weight-register', 'plan-register'].forEach((id) => document.getElementById(id)?.addEventListener('click', requireProfile, true));

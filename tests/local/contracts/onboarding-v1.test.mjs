@@ -114,3 +114,11 @@ test('atalhos autenticados revelam e navegam para suas próprias áreas', () => 
   assert.match(plan, /navButton\.addEventListener\('click', \(\) => \{[\s\S]*?if \(!currentUserId\) return;[\s\S]*?section\.hidden = false;[\s\S]*?section\.scrollIntoView/);
   assert.doesNotMatch(plan, /diaryNavButton\.addEventListener/);
 });
+
+test('retorno de uma navegação externa não descarta o clique protegido enquanto o perfil é relido', () => {
+  assert.match(onboarding, /profileStatus: 'unknown', profilePromise: null/);
+  assert.match(onboarding, /if \(state\.profilePromise\) return state\.profilePromise/);
+  assert.match(onboarding, /if \(state\.profileStatus === 'loading' \|\| state\.profileStatus === 'unknown'\)/);
+  assert.match(onboarding, /loadProfile\(\)\.then\(\(profile\) => \{[\s\S]*?if \(profile\?\.completed_at\) control\.click\(\);/);
+  assert.match(onboarding, /if \(nextUser\?\.id !== state\.user\?\.id\)/);
+});

@@ -24,6 +24,15 @@
   function setMessage(text = '') { message.textContent = text; message.hidden = !text; }
   function toast(text, type = 'info') { if (typeof window.showToast === 'function') window.showToast(text, type); }
   function friendly(error) { const text = String(error?.message || '').toLowerCase(); return text.includes('jwt') || text.includes('session') ? 'Sua sessão expirou. Entre novamente.' : 'Não foi possível salvar as medidas. Tente novamente.'; }
+  async function ensureCurrentUser() {
+    if (!client) return null;
+    if (currentUserId) return currentUserId;
+    try {
+      const { data, error } = await client.auth.getUser();
+      currentUserId = error ? null : data.user?.id || null;
+    } catch { currentUserId = null; }
+    return currentUserId;
+  }
 
   function open(trigger, record = null) {
     returnFocus = trigger || document.activeElement; editingId = record?.id || null; form.reset();
@@ -53,7 +62,10 @@
     if (error || data?.id !== record.id) return toast('Não foi possível excluir as medidas.', 'error'); await load(currentUserId); toast('Medidas excluídas.', 'success');
   }
 
-  register.addEventListener('click', () => open(register));
+  register.addEventListener('click', async () => {
+    if (!await ensureCurrentUser()) return toast('Sua sessão expirou. Entre novamente.', 'error');
+    open(register);
+  });
   document.querySelectorAll('[data-measurements-close]').forEach((button) => button.addEventListener('click', close));
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !modal.hidden) { event.preventDefault(); close(); } });
   form.addEventListener('submit', async (event) => {
@@ -74,4 +86,5 @@
   });
   if (!client) return;
   client.auth.onAuthStateChange((_event, session) => { window.setTimeout(() => { const next = session?.user?.id || null; if (next === currentUserId) return; currentUserId = next; modal.hidden = true; records.clear(); if (next) load(next); else { list.replaceChildren(); status.textContent = ''; } }, 0); });
+  client.auth.getSession().then(({ data, error }) => { if (!error) { const next = data.session?.user?.id || null; if (next !== currentUserId) { currentUserId = next; if (next) load(next); } } });
 }());
