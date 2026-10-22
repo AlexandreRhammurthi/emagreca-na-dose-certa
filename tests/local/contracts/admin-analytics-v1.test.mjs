@@ -64,6 +64,9 @@ test('cliente renderiza somente os agrupamentos demográficos agregados', () => 
   assert.match(client, /renderGrowth\(data\.registration_growth\)/);
   assert.match(client, /admin-growth-tooltip/);
   assert.match(client, /addEventListener\('pointermove', showTooltip\)/);
+  assert.match(client, /admin-growth-bar-front/);
+  assert.match(client, /admin-growth-bar-top/);
+  assert.match(client, /admin-growth-bar-side/);
   assert.doesNotMatch(client, /date_of_birth|gender_other|city.*state.*user_id/i);
 });
 

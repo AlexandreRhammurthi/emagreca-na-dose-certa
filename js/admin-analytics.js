@@ -107,7 +107,7 @@
       target.replaceChildren(textElement('p', 'O gráfico aparecerá após o primeiro cadastro.', 'admin-empty'));
       return;
     }
-    note.textContent = `Evolução cumulativa de ${formatDay(days[0].day)} até ${formatDay(days.at(-1).day)}.`;
+    note.textContent = `Linha: total acumulado. Barras ao fundo: novos cadastros por dia, de ${formatDay(days[0].day)} até ${formatDay(days.at(-1).day)}.`;
     const width = 920;
     const height = 260;
     const padding = { top: 20, right: 18, bottom: 38, left: 46 };
@@ -129,6 +129,28 @@
       label.setAttribute('x', String(padding.left - 9)); label.setAttribute('y', String(y(value) + 4)); label.setAttribute('text-anchor', 'end'); label.setAttribute('class', 'admin-growth-axis');
       label.textContent = formatNumber(Math.round(value)); svg.append(label);
     });
+    const plotWidth = width - padding.left - padding.right;
+    const plotHeight = height - padding.top - padding.bottom;
+    const dailyMaximum = Math.max(...days.map((item) => Number(item.new_users)), 1);
+    const barWidth = Math.max(2, Math.min(24, (plotWidth / days.length) * 0.64));
+    const barDepth = Math.min(6, Math.max(1.5, barWidth * 0.26));
+    const barGroup = document.createElementNS(namespace, 'g');
+    barGroup.setAttribute('class', 'admin-growth-bars');
+    days.forEach((item, index) => {
+      const newUsers = Number(item.new_users);
+      if (!newUsers) return;
+      const barHeight = (newUsers / dailyMaximum) * plotHeight * 0.42;
+      const barX = x(index) - barWidth / 2;
+      const barY = height - padding.bottom - barHeight;
+      const front = document.createElementNS(namespace, 'rect');
+      front.setAttribute('x', String(barX)); front.setAttribute('y', String(barY)); front.setAttribute('width', String(barWidth)); front.setAttribute('height', String(barHeight)); front.setAttribute('class', 'admin-growth-bar-front');
+      const top = document.createElementNS(namespace, 'polygon');
+      top.setAttribute('points', `${barX},${barY} ${barX + barWidth},${barY} ${barX + barWidth + barDepth},${barY - barDepth} ${barX + barDepth},${barY - barDepth}`); top.setAttribute('class', 'admin-growth-bar-top');
+      const side = document.createElementNS(namespace, 'polygon');
+      side.setAttribute('points', `${barX + barWidth},${barY} ${barX + barWidth + barDepth},${barY - barDepth} ${barX + barWidth + barDepth},${barY + barHeight - barDepth} ${barX + barWidth},${barY + barHeight}`); side.setAttribute('class', 'admin-growth-bar-side');
+      barGroup.append(front, top, side);
+    });
+    svg.append(barGroup);
     const line = document.createElementNS(namespace, 'polyline');
     line.setAttribute('points', days.map((item, index) => `${x(index)},${y(Number(item.total))}`).join(' '));
     line.setAttribute('class', 'admin-growth-line'); svg.append(line);
