@@ -1,6 +1,7 @@
 # Dependências locais
 node_modules/
 public/
+.wrangler/
 supabase/.temp/
 supabase/.temp_backup_*/
 
