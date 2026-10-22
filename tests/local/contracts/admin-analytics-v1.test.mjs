@@ -46,6 +46,7 @@ test('Edge Function protege acesso no servidor e retorna somente agregados', () 
   assert.match(edgeFunction, /cities: aggregateCensus/);
   assert.match(edgeFunction, /function registrationGrowth\(profiles: RegistrationProfile\[\], endDay: string\)/);
   assert.match(edgeFunction, /registration_growth: growth/);
+  assert.match(edgeFunction, /new_users: number/);
   assert.match(edgeFunction, /const accountUsers = new Set\(accounts\.map/);
   assert.match(edgeFunction, /d7Eligible\.map\(\(account\) => account\.id\)/);
   assert.match(edgeFunction, /account_cohort_available: accountUsers\.size > 0/);
@@ -61,6 +62,8 @@ test('cliente renderiza somente os agrupamentos demográficos agregados', () => 
   assert.match(client, /metrics\.total_registered_users/);
   assert.match(client, /function renderGrowth\(growth\)/);
   assert.match(client, /renderGrowth\(data\.registration_growth\)/);
+  assert.match(client, /admin-growth-tooltip/);
+  assert.match(client, /addEventListener\('pointermove', showTooltip\)/);
   assert.doesNotMatch(client, /date_of_birth|gender_other|city.*state.*user_id/i);
 });
 

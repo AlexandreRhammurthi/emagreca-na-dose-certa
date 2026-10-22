@@ -100,7 +100,7 @@
     const target = document.getElementById('admin-growth-chart');
     const note = document.getElementById('admin-growth-note');
     const total = document.getElementById('admin-growth-total');
-    const days = Array.isArray(growth?.days) ? growth.days.filter((item) => typeof item?.day === 'string' && Number.isFinite(Number(item.total))) : [];
+    const days = Array.isArray(growth?.days) ? growth.days.filter((item) => typeof item?.day === 'string' && Number.isFinite(Number(item.total)) && Number.isFinite(Number(item.new_users))) : [];
     total.textContent = `${formatNumber(growth?.total_registered_users)} usuários`;
     if (!days.length) {
       note.textContent = 'Ainda não há cadastros para compor a evolução histórica.';
@@ -132,12 +132,36 @@
     const line = document.createElementNS(namespace, 'polyline');
     line.setAttribute('points', days.map((item, index) => `${x(index)},${y(Number(item.total))}`).join(' '));
     line.setAttribute('class', 'admin-growth-line'); svg.append(line);
+    const guide = document.createElementNS(namespace, 'line');
+    guide.setAttribute('y1', String(padding.top)); guide.setAttribute('y2', String(height - padding.bottom)); guide.setAttribute('class', 'admin-growth-guide'); guide.hidden = true; svg.append(guide);
+    const point = document.createElementNS(namespace, 'circle');
+    point.setAttribute('r', '5'); point.setAttribute('class', 'admin-growth-point'); point.hidden = true; svg.append(point);
     [0, Math.floor((days.length - 1) / 2), days.length - 1].filter((value, index, array) => array.indexOf(value) === index).forEach((index) => {
       const label = document.createElementNS(namespace, 'text');
       label.setAttribute('x', String(x(index))); label.setAttribute('y', String(height - 12)); label.setAttribute('text-anchor', index === 0 ? 'start' : index === days.length - 1 ? 'end' : 'middle'); label.setAttribute('class', 'admin-growth-axis');
       label.textContent = formatDay(days[index].day); svg.append(label);
     });
-    target.replaceChildren(svg);
+    const hitArea = document.createElementNS(namespace, 'rect');
+    hitArea.setAttribute('x', String(padding.left)); hitArea.setAttribute('y', String(padding.top)); hitArea.setAttribute('width', String(width - padding.left - padding.right)); hitArea.setAttribute('height', String(height - padding.top - padding.bottom)); hitArea.setAttribute('fill', 'transparent'); hitArea.setAttribute('class', 'admin-growth-hit-area'); svg.append(hitArea);
+    const tooltip = textElement('div', '', 'admin-growth-tooltip');
+    tooltip.hidden = true;
+    const hideTooltip = () => { tooltip.hidden = true; guide.hidden = true; point.hidden = true; };
+    const showTooltip = (event) => {
+      const box = svg.getBoundingClientRect();
+      if (!box.width) return;
+      const svgX = (event.clientX - box.left) * width / box.width;
+      const index = Math.max(0, Math.min(days.length - 1, Math.round((svgX - padding.left) * Math.max(days.length - 1, 1) / (width - padding.left - padding.right))));
+      const day = days[index];
+      guide.setAttribute('x1', String(x(index))); guide.setAttribute('x2', String(x(index))); guide.hidden = false;
+      point.setAttribute('cx', String(x(index))); point.setAttribute('cy', String(y(Number(day.total)))); point.hidden = false;
+      tooltip.textContent = `${formatDay(day.day)} · ${formatNumber(day.new_users)} novo${Number(day.new_users) === 1 ? '' : 's'} cadastro${Number(day.new_users) === 1 ? '' : 's'} · ${formatNumber(day.total)} acumulado${Number(day.total) === 1 ? '' : 's'}`;
+      tooltip.style.left = `${Math.max(12, Math.min(88, (x(index) / width) * 100))}%`;
+      tooltip.hidden = false;
+    };
+    hitArea.addEventListener('pointermove', showTooltip);
+    hitArea.addEventListener('pointerdown', showTooltip);
+    svg.addEventListener('pointerleave', hideTooltip);
+    target.replaceChildren(svg, tooltip);
     target.setAttribute('aria-label', `Crescimento cumulativo de usuários: ${formatNumber(values[0])} no início e ${formatNumber(values.at(-1))} no fim do período.`);
   }
 

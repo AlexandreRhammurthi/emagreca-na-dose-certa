@@ -13,6 +13,10 @@ Validações: `npm.cmd test` PASS (169/169), `npm.cmd run build` PASS (28/28), `
 
 QA deve conferir em desktop e mobile: período completo, continuidade em dias sem cadastro, escala legível, estado vazio e ausência de dados individuais na resposta.
 
+### Tooltip interativo
+
+O gráfico agora retorna `new_users` junto de cada total diário agregado e exibe um tooltip ao passar o mouse ou tocar: data, novos cadastros daquele dia e total acumulado. Validações repetidas: `npm.cmd test` PASS (169/169), `npm.cmd run build` PASS (28/28) e `git diff --check` PASS. QA deve validar o posicionamento e a legibilidade do tooltip em desktop e mobile.
+
 **Estado:** PRONTA PARA QA — SEM PUBLICAÇÃO REMOTA
 **Branch:** `feature/product-analytics-dashboard`
 **HEAD sob teste:** `04b86a5` (sem commit da tarefa)

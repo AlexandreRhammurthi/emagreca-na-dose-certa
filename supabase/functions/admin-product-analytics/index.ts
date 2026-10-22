@@ -121,11 +121,12 @@ function registrationGrowth(profiles: RegistrationProfile[], endDay: string) {
   }
   const start = [...registrationsByDay.keys()].sort()[0];
   if (!start) return { start: null, end: endDay, total_registered_users: 0, days: [] };
-  const days: Array<{ day: string; total: number }> = [];
+  const days: Array<{ day: string; new_users: number; total: number }> = [];
   let total = 0;
   for (let day = start; day <= endDay; day = nextDay(day, 1)) {
-    total += registrationsByDay.get(day) || 0;
-    days.push({ day, total });
+    const newUsers = registrationsByDay.get(day) || 0;
+    total += newUsers;
+    days.push({ day, new_users: newUsers, total });
   }
   return { start, end: endDay, total_registered_users: total, days };
 }
