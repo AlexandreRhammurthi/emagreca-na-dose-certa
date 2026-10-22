@@ -8,6 +8,7 @@ const CENSUS_MIN_GROUP_SIZE = 5;
 
 type ProductEvent = { user_id: string; event_name: string; action_kind: string; simulated_in_session: boolean; event_day: string };
 type ProfileAccount = { id: string; created_at: string };
+type RegistrationProfile = { created_at: string };
 type CensusProfile = { date_of_birth: string | null; gender: string | null; city: string | null; state: string | null };
 
 function corsHeaders(origin: string | null) {
@@ -100,6 +101,35 @@ async function loadCensusProfiles(serverClient: ReturnType<typeof createClient>)
   }
 }
 
+async function loadRegistrationProfiles(serverClient: ReturnType<typeof createClient>) {
+  const profiles: RegistrationProfile[] = [];
+  const pageSize = 1000;
+  for (let start = 0; ; start += pageSize) {
+    const { data, error } = await serverClient.from('profiles').select('created_at').order('created_at', { ascending: true }).range(start, start + pageSize - 1);
+    if (error) throw new Error('registration_growth_query_failed');
+    const page = (data || []).filter((profile): profile is RegistrationProfile => typeof profile === 'object' && profile !== null && typeof profile.created_at === 'string');
+    profiles.push(...page);
+    if (page.length < pageSize) return profiles;
+  }
+}
+
+function registrationGrowth(profiles: RegistrationProfile[], endDay: string) {
+  const registrationsByDay = new Map<string, number>();
+  for (const profile of profiles) {
+    const day = isoDay(new Date(profile.created_at));
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day) && day <= endDay) registrationsByDay.set(day, (registrationsByDay.get(day) || 0) + 1);
+  }
+  const start = [...registrationsByDay.keys()].sort()[0];
+  if (!start) return { start: null, end: endDay, total_registered_users: 0, days: [] };
+  const days: Array<{ day: string; total: number }> = [];
+  let total = 0;
+  for (let day = start; day <= endDay; day = nextDay(day, 1)) {
+    total += registrationsByDay.get(day) || 0;
+    days.push({ day, total });
+  }
+  return { start, end: endDay, total_registered_users: total, days };
+}
+
 function buildInsights(metrics: Record<string, number>, recentAccounts: number, previousAccounts: number) {
   if (recentAccounts < 30) return [];
   const insights: Array<{ title: string; message: string; recommendation: string }> = [];
@@ -144,6 +174,7 @@ Deno.serve(async (request) => {
       .lt('created_at', `${nextDay(endDay, 1)}T00:00:00.000Z`);
     if (profileError) throw new Error('account_cohort_query_failed');
     const censusProfiles = await loadCensusProfiles(serverClient);
+    const registrationProfiles = await loadRegistrationProfiles(serverClient);
     const { data, error } = await serverClient.from('product_events').select('user_id,event_name,action_kind,simulated_in_session,event_day').gte('event_day', startDay).lte('event_day', endDay);
     if (error) throw new Error('aggregate_query_failed');
 
@@ -173,6 +204,7 @@ Deno.serve(async (request) => {
       age_bands: aggregateCensus(censusProfiles.map((profile) => ageBand(profile.date_of_birth, new Date()))),
       cities: aggregateCensus(censusProfiles.map((profile) => censusCityLabel(profile.city, profile.state)))
     };
+    const growth = registrationGrowth(registrationProfiles, endDay);
     const metrics = {
       total_registered_users: census.total_registered_users,
       new_accounts: accounts.length,
@@ -195,6 +227,7 @@ Deno.serve(async (request) => {
       funnel: { account_created: accountUsers.size, onboarding_completed: onboardingUsers.size, first_product_action: actionUsers.size, product_returned: returnUsers.size },
       adoption,
       census,
+      registration_growth: growth,
       insights: buildInsights(metrics, recentAccounts, previousAccounts)
     }, 200, origin);
   } catch (error) {

@@ -15,6 +15,7 @@ test('admin page é separada, acessível e não contém credencial administrativ
   assert.match(page, /id="admin-census-gender"/);
   assert.match(page, /id="admin-census-age"/);
   assert.match(page, /id="admin-census-city"/);
+  assert.match(page, /id="admin-growth-chart"/);
   assert.doesNotMatch(page, /arbandeira@gmail\.com|ADMIN_ANALYTICS_ALLOWED_EMAIL|service_role|sb_secret_/i);
 });
 
@@ -43,6 +44,8 @@ test('Edge Function protege acesso no servidor e retorna somente agregados', () 
   assert.match(edgeFunction, /select\('date_of_birth,gender,city,state'\)/);
   assert.match(edgeFunction, /count >= CENSUS_MIN_GROUP_SIZE/);
   assert.match(edgeFunction, /cities: aggregateCensus/);
+  assert.match(edgeFunction, /function registrationGrowth\(profiles: RegistrationProfile\[\], endDay: string\)/);
+  assert.match(edgeFunction, /registration_growth: growth/);
   assert.match(edgeFunction, /const accountUsers = new Set\(accounts\.map/);
   assert.match(edgeFunction, /d7Eligible\.map\(\(account\) => account\.id\)/);
   assert.match(edgeFunction, /account_cohort_available: accountUsers\.size > 0/);
@@ -56,6 +59,8 @@ test('cliente renderiza somente os agrupamentos demográficos agregados', () => 
   assert.match(client, /renderCensusRows\('admin-census-age', census\.age_bands\)/);
   assert.match(client, /renderCensusRows\('admin-census-city', census\.cities\)/);
   assert.match(client, /metrics\.total_registered_users/);
+  assert.match(client, /function renderGrowth\(growth\)/);
+  assert.match(client, /renderGrowth\(data\.registration_growth\)/);
   assert.doesNotMatch(client, /date_of_birth|gender_other|city.*state.*user_id/i);
 });
 

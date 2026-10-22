@@ -1,5 +1,18 @@
 # Relatório DEV — ADMIN-ANALYTICS-V1
 
+## Complemento — ADMIN-USER-GROWTH (2026-10-21)
+
+**Estado:** PRONTA PARA QA — SEM PUBLICAÇÃO REMOTA
+**Branch:** `feature/admin-user-growth`
+
+- `admin-product-analytics`: consulta somente `created_at` de `profiles`, pagina o resultado no servidor, agrupa por dia e retorna a série cumulativa do primeiro cadastro até hoje. Não retorna IDs, e-mails ou perfis.
+- `admin.html`, `js/admin-analytics.js` e `styles.css`: card responsivo com gráfico SVG, eixos e resumo acessível; exibe estado vazio quando ainda não houver cadastro.
+- `tests/local/contracts/admin-analytics-v1.test.mjs`: contratos para a série de crescimento e sua renderização.
+
+Validações: `npm.cmd test` PASS (169/169), `npm.cmd run build` PASS (28/28), `git diff --check` PASS. `deno check` ficou indisponível porque o executável Deno não está instalado neste ambiente.
+
+QA deve conferir em desktop e mobile: período completo, continuidade em dias sem cadastro, escala legível, estado vazio e ausência de dados individuais na resposta.
+
 **Estado:** PRONTA PARA QA — SEM PUBLICAÇÃO REMOTA
 **Branch:** `feature/product-analytics-dashboard`
 **HEAD sob teste:** `04b86a5` (sem commit da tarefa)
