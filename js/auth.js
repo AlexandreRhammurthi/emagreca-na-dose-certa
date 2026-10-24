@@ -15,6 +15,7 @@
   let signupSuccessActive = false;
   let currentUser = null;
   let activeRequest = false;
+  let signupStep = 1;
   let toastExitTimer = null;
   let toastRemoveTimer = null;
 
@@ -66,7 +67,7 @@
     const button = form.querySelector('[type="submit"]');
     button.disabled = loading;
     button.classList.toggle('is-loading', loading);
-    form.querySelectorAll('input').forEach((input) => { input.disabled = loading; });
+    form.querySelectorAll('input, select, button').forEach((input) => { input.disabled = loading; });
   }
 
   function resetPasswordVisibility() {
@@ -86,6 +87,7 @@
     modal.querySelectorAll('[data-auth-view]').forEach((element) => {
       element.hidden = element.dataset.authView !== view;
     });
+    if (view === 'signup') setSignupStep(1);
     const title = modal.querySelector(`[data-auth-view="${view}"] h2`);
     title.id = `auth-title-${view}`;
     dialog.setAttribute('aria-labelledby', title.id);
@@ -155,6 +157,60 @@
   function validate(input, condition) {
     input.setAttribute('aria-invalid', String(!condition));
     return condition;
+  }
+
+  function adult(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return false;
+    const birth = new Date(`${value}T00:00:00`);
+    const now = new Date();
+    let age = now.getFullYear() - birth.getFullYear();
+    if (now.getMonth() < birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() < birth.getDate())) age -= 1;
+    return age >= 18 && age <= 120;
+  }
+
+  function ptNumber(value) { return Number(String(value || '').trim().replace('.', '').replace(',', '.')); }
+
+  function setSignupStep(step) {
+    const form = document.getElementById('signup-form');
+    if (!form) return;
+    signupStep = step;
+    form.querySelectorAll('[data-signup-step]').forEach((element) => { element.hidden = Number(element.dataset.signupStep) !== step; });
+    form.querySelector('.signup-progress span').style.width = `${(step / 4) * 100}%`;
+    document.getElementById('signup-back').hidden = step === 1;
+    document.getElementById('signup-next').hidden = step === 4;
+    document.getElementById('signup-submit').hidden = step !== 4;
+    clearMessages();
+  }
+
+  function toggleSignupConditional(form) {
+    const genderOther = document.getElementById('signup-gender-other-field');
+    const medicineOther = document.getElementById('signup-medicine-other-field');
+    genderOther.hidden = form.elements.gender.value !== 'other';
+    medicineOther.hidden = form.elements.medicine.value !== 'other';
+    form.elements.gender_other.required = !genderOther.hidden;
+    form.elements.medicine_other.required = !medicineOther.hidden;
+  }
+
+  function updateSignupInterval(form) {
+    document.getElementById('signup-interval-output').textContent = `A cada ${form.elements.application_interval_days.value} dias`;
+  }
+
+  function validSignupStep(form, step) {
+    const scope = form.querySelector(`[data-signup-step="${step}"]`);
+    let valid = true;
+    scope.querySelectorAll('[required]').forEach((input) => {
+      const ok = input.type === 'checkbox' ? input.checked : Boolean(input.value.trim());
+      valid &&= validate(input, ok);
+    });
+    if (step === 1) {
+      valid &&= validate(form.elements.email, validEmail(form.elements.email.value.trim()));
+      valid &&= validate(form.elements.password, form.elements.password.value.length >= 6);
+      valid &&= validate(form.elements.confirm, form.elements.password.value === form.elements.confirm.value && Boolean(form.elements.confirm.value));
+    }
+    if (step === 2 && !adult(form.elements.date_of_birth.value)) { setMessage('signup-message', 'O cadastro é destinado a pessoas com 18 anos ou mais.'); return false; }
+    if (step === 3 && (!(ptNumber(form.elements.weight_kg.value) > 0 && ptNumber(form.elements.weight_kg.value) <= 500) || !(Number(form.elements.height_cm.value) >= 80 && Number(form.elements.height_cm.value) <= 250))) { setMessage('signup-message', 'Informe um peso e uma altura válidos.'); return false; }
+    if (!valid) setMessage('signup-message', form.elements.password.value !== form.elements.confirm.value ? 'As senhas não coincidem.' : 'Preencha os campos obrigatórios para continuar.');
+    return valid;
   }
 
   function clearAuthParameters() {
@@ -230,31 +286,26 @@
     event.preventDefault();
     if (!client || activeRequest) return;
     const form = event.currentTarget;
+    if (!validSignupStep(form, 4)) return;
     const name = form.elements.name.value.trim();
     const email = form.elements.email.value.trim();
     const password = form.elements.password.value;
-    const confirm = form.elements.confirm.value;
-    const adultConfirmation = form.elements.adult_confirmation.checked;
-    const legalAcceptance = form.elements.legal_acceptance.checked;
+    const medicine = form.elements.medicine.value === 'other' ? form.elements.medicine_other.value.trim() : form.elements.medicine.value;
+    const registration = {
+      version: 'v1', date_of_birth: form.elements.date_of_birth.value, gender: form.elements.gender.value,
+      gender_other: form.elements.gender.value === 'other' ? form.elements.gender_other.value.trim() : null,
+      country_code: form.elements.country_code.value.trim().toUpperCase(), state: form.elements.state.value,
+      city: form.elements.city.value.trim(), weight_kg: ptNumber(form.elements.weight_kg.value), height_cm: Number(form.elements.height_cm.value),
+      journey_goal: form.elements.journey_goal.value, medicine, application_interval_days: Number(form.elements.application_interval_days.value),
+      reminder_time: form.elements.reminder_time.value, google_calendar_opt_in: form.elements.google_calendar_opt_in.checked
+    };
     clearMessages();
-    const valid = [
-      validate(form.elements.name, Boolean(name)),
-      validate(form.elements.email, validEmail(email)),
-      validate(form.elements.password, password.length >= 6),
-      validate(form.elements.confirm, password === confirm && Boolean(confirm)),
-      validate(form.elements.adult_confirmation, adultConfirmation),
-      validate(form.elements.legal_acceptance, legalAcceptance)
-    ].every(Boolean);
-    if (!valid) {
-      setMessage('signup-message', password !== confirm ? 'As senhas não coincidem.' : 'Preencha os campos corretamente.');
-      return;
-    }
     setLoading(form, true);
     const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
-        data: { display_name: name },
+        data: { display_name: name, registration_v1: registration },
         emailRedirectTo: `${window.location.origin}${window.location.pathname}`
       }
     });
@@ -266,9 +317,19 @@
       return;
     }
     form.reset();
-    if (data.session) document.dispatchEvent(new CustomEvent('dosecerta:account-created'));
     showSignupSuccess();
   });
+
+  document.getElementById('signup-next').addEventListener('click', () => {
+    const form = document.getElementById('signup-form');
+    if (validSignupStep(form, signupStep)) setSignupStep(signupStep + 1);
+  });
+  document.getElementById('signup-back').addEventListener('click', () => setSignupStep(Math.max(1, signupStep - 1)));
+  document.getElementById('signup-form').elements.gender.addEventListener('change', (event) => toggleSignupConditional(event.currentTarget.form));
+  document.getElementById('signup-form').elements.medicine.addEventListener('change', (event) => toggleSignupConditional(event.currentTarget.form));
+  document.getElementById('signup-form').elements.application_interval_days.addEventListener('input', (event) => updateSignupInterval(event.currentTarget.form));
+  toggleSignupConditional(document.getElementById('signup-form'));
+  updateSignupInterval(document.getElementById('signup-form'));
 
   document.getElementById('signup-success-ok').addEventListener('click', finishSignupSuccess);
 

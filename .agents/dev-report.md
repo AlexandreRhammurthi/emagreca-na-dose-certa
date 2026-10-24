@@ -1,5 +1,18 @@
 # Relatório DEV — ADMIN-ANALYTICS-V1
 
+## UNIFIED-REGISTRATION-V1 (2026-10-24)
+
+**Estado:** QA PASS — PUBLICAÇÃO AUTORIZADA
+**Branch:** `feature/unified-registration-flow`
+
+- O cadastro de conta passa a reunir acesso, dados pessoais, medidas, objetivo e rotina em quatro etapas antes do envio ao Supabase.
+- Os aceites de maioridade, Termos, Privacidade e dados de saúde continuam obrigatórios e explícitos; a mensagem de e-mail apenas os reforça.
+- Os dados de jornada seguem como `registration_v1` nos metadados até a sessão confirmada. Depois da confirmação, o app materializa perfil, peso inicial e consentimentos; o rascunho é removido dos metadados.
+- O template de confirmação publicado no Supabase contém o link de confirmação, links públicos dos Termos e Política e o aviso de que a plataforma não substitui consulta, diagnóstico, prescrição ou orientação profissional.
+- A configuração de Auth foi explicitada para não propagar defaults locais: domínio HTTPS/redirects existentes, confirmações e TOTP ativos, OTP de oito dígitos e storage vector desativado.
+
+Validações DEV: `npm.cmd test` 173/173, `npm.cmd run build` 28/28, `node --check js/auth.js`, `node --check js/onboarding.js` e `git diff --check` sem achados. QA independente passou em Chromium desktop e mobile; a revalidação de configuração também passou.
+
 ## Complemento — ADMIN-USER-GROWTH (2026-10-21)
 
 **Estado:** PRONTA PARA QA — SEM PUBLICAÇÃO REMOTA

@@ -82,6 +82,32 @@
     Object.entries(profile).forEach(([key, value]) => { if (form.elements[key] && value != null) form.elements[key].value = value; });
     form.elements.google_calendar_opt_in.checked = Boolean(profile.google_calendar_opt_in); form.elements.health_data_consent.checked = true; toggleConditional(); updateInterval();
   };
+  async function materializeConfirmedRegistration() {
+    const draft = state.user?.user_metadata?.registration_v1;
+    if (!draft || state.profile?.completed_at) return false;
+    const required = ['date_of_birth', 'gender', 'country_code', 'state', 'city', 'height_cm', 'journey_goal', 'medicine', 'application_interval_days', 'reminder_time'];
+    if (draft.version !== 'v1' || !required.every((key) => draft[key] !== undefined && draft[key] !== null && String(draft[key]).trim() !== '')) return false;
+    const weight = ptNumber(draft.weight_kg);
+    if (!adult(draft.date_of_birth) || !(weight > 0 && weight <= 500) || !(Number(draft.height_cm) >= 80 && Number(draft.height_cm) <= 250)) return false;
+    const payload = { user_id: state.user.id, date_of_birth: draft.date_of_birth, gender: draft.gender, gender_other: draft.gender === 'other' ? String(draft.gender_other || '').trim() : null, country_code: String(draft.country_code).trim().toUpperCase(), state: draft.state, city: String(draft.city).trim(), height_cm: Number(draft.height_cm), journey_goal: draft.journey_goal, medicine: String(draft.medicine).trim(), application_interval_days: Number(draft.application_interval_days), reminder_time: draft.reminder_time, google_calendar_opt_in: Boolean(draft.google_calendar_opt_in), completed_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+    const { data: profile, error } = await client.from('onboarding_profiles').upsert(payload, { onConflict: 'user_id' }).select('*').single();
+    if (error) { console.error('Onboarding: cadastro confirmado não pôde ser materializado.', { code: error.code || 'unknown' }); return false; }
+    if (!profile.initial_weight_record_id) {
+      const { data: weightRecord, error: weightError } = await client.from('weight_records').insert({ user_id: state.user.id, record_date: todayCivil(), weight_kg: weight, notes: 'Peso inicial do cadastro', source: 'manual', application_id: null }).select('id').single();
+      if (weightError) { console.error('Onboarding: peso inicial indisponível.', { code: weightError.code || 'unknown' }); return false; }
+      await client.from('onboarding_profiles').update({ initial_weight_record_id: weightRecord.id }).eq('user_id', state.user.id);
+      profile.initial_weight_record_id = weightRecord.id;
+    }
+    const now = new Date().toISOString();
+    const { error: consentError } = await client.from('user_consents').upsert(['terms', 'privacy', 'health_data'].map((consent_key) => ({ user_id: state.user.id, consent_key, consent_version: 'v1', granted_at: now, revoked_at: null })), { onConflict: 'user_id,consent_key' });
+    if (consentError) { console.error('Onboarding: consentimentos indisponíveis.', { code: consentError.code || 'unknown' }); return false; }
+    await client.auth.updateUser({ data: { registration_v1: null } });
+    state.profile = profile; state.profileStatus = 'ready';
+    window.DoseAnalytics?.accountCreated();
+    window.DoseAnalytics?.onboardingCompleted();
+    window.showToast?.('Conta confirmada e jornada criada com sucesso.', 'success');
+    return true;
+  }
   function requireProfile(event) {
     if (!state.user) { event.preventDefault(); event.stopImmediatePropagation(); window.openOnboardingSignupGate?.(); return; }
     if (state.profileStatus === 'loading' || state.profileStatus === 'unknown') {
@@ -198,6 +224,7 @@
     }
     if (!state.user) { close(); return; }
     await loadProfile();
+    await materializeConfirmedRegistration();
     fill(state.profile);
   });
   document.addEventListener('dosecerta:simulation', ({ detail }) => { if (detail && !state.user) window.openOnboardingSignupGate?.(); });

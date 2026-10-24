@@ -12,3 +12,22 @@ verify_jwt = true
 
 [functions.record-product-event]
 verify_jwt = true
+
+[auth]
+site_url = "https://emagrecanadosecerta.com.br"
+additional_redirect_urls = ["https://www.emagrecanadosecerta.com.br/**", "https://emagreca-na-dose-certa.arbandeira.workers.dev/**", "https://*.emagreca-na-dose-certa.arbandeira.workers.dev"]
+
+[auth.email]
+enable_confirmations = true
+otp_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email.template.confirmation]
+subject = "Confirme sua conta — Dose Certa"
+content_path = "./supabase/templates/confirmation.html"
+
+[storage.vector]
+enabled = false

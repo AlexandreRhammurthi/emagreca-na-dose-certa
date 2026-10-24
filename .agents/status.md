@@ -1,20 +1,20 @@
 # Andamento da tarefa
 
-**Tarefa:** ADMIN-USER-GROWTH — Gráfico de crescimento cumulativo de usuários
-**Branch:** `feature/admin-user-growth`
+**Tarefa:** UNIFIED-REGISTRATION-V1 — Cadastro único com confirmação de e-mail reforçada
+**Branch:** `feature/unified-registration-flow`
 **Agente ativo:** DEV
-**Etapa atual:** PRONTA PARA QA — tooltip do gráfico
-**Gates concluídos:** escopo e fonte de dados revisados; branch isolada criada; implementação; tooltip interativo; contratos locais; suíte; build; integridade do diff
-**Percentual estimado:** 75%
-**Última atualização:** 2026-10-21
+**Etapa atual:** CONCLUÍDA
+**Gates concluídos:** escopo, implementação, contratos locais, suíte (173/173), build (28/28), sintaxe, integridade do diff, QA visual independente e revalidação de configuração (PASS)
+**Percentual estimado:** 100%
+**Última atualização:** 2026-10-24
 
 ## Última ação
 
-O painel recebe uma série diária agregada, acumulada desde o primeiro cadastro até o dia atual. O cliente desenha o gráfico sem receber e-mail, ID ou outro dado individual. O tooltip mostra data, novos cadastros do dia e total acumulado com mouse ou toque. `npm.cmd test` passou com 169 testes; `npm.cmd run build` passou com 28/28 arquivos; `git diff --check` passou. A checagem `deno check` não foi executada porque o binário Deno não está instalado neste ambiente.
+O cadastro inicial agora concentra dados pessoais, objetivos e rotina em quatro etapas, preservando aceite explícito dos Termos, Privacidade e dados de saúde. A conta só é materializada após a confirmação do e-mail. O template de confirmação reforça o aceite e mantém o aviso de que o site não substitui acompanhamento profissional. Gates DEV concluídos: `npm.cmd test` 173/173; `npm.cmd run build` 28/28; `node --check` nos dois módulos; `git diff --check` sem achados.
 
 ## Próximo passo
 
-QA deve validar o gráfico em desktop e mobile, inclusive sem cadastros e com dias sem novos cadastros. Deploy da Edge Function e do site dependerá de autorização explícita.
+Tarefa concluída. A configuração de Auth foi publicada no Supabase e o deploy Cloudflare foi confirmado por resposta HTTPS 200 da página pública com o cadastro único presente.
 
 ## Regras de leitura
 

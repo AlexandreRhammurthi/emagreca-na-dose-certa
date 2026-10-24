@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;background:#f4f7f5;color:#163f39;font-family:Arial,sans-serif;line-height:1.55">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 16px"><tr><td align="center">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border-radius:16px;padding:32px">
+        <tr><td>
+          <p style="margin:0 0 12px;color:#0f8975;font-size:11px;font-weight:bold;letter-spacing:1.5px">DOSE CERTA</p>
+          <h1 style="margin:0 0 16px;font-size:26px;line-height:1.2">Confirme sua conta</h1>
+          <p>Olá{{ if .Data.display_name }}, {{ .Data.display_name }}{{ end }}. Obrigado por criar sua jornada no Dose Certa.</p>
+          <p>Para confirmar seu e-mail e acessar sua conta, use o botão abaixo.</p>
+          <p style="margin:28px 0"><a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#163f39;border-radius:8px;color:#ffffff;padding:13px 20px;font-weight:bold;text-decoration:none">Confirmar minha conta</a></p>
+          <p style="font-size:13px;color:#55716b">Ao criar esta conta, você confirmou ter lido e aceitado os <a href="https://emagrecanadosecerta.com.br/terms.html" style="color:#0f8975;font-weight:bold">Termos de Uso</a> e a <a href="https://emagrecanadosecerta.com.br/privacy.html" style="color:#0f8975;font-weight:bold">Política de Privacidade</a>. Este aviso reforça o seu aceite e não substitui a confirmação realizada no cadastro.</p>
+          <p style="font-size:13px;color:#55716b">O Dose Certa é uma ferramenta de organização e educação. Ele não substitui consulta, diagnóstico, prescrição ou orientação de profissionais de saúde. Confira sempre a prescrição, a apresentação do medicamento e a dose com seu profissional de saúde.</p>
+          <p style="font-size:12px;color:#78918b">Se você não criou esta conta, pode ignorar este e-mail.</p>
+        </td></tr>
+      </table>
+    </td></tr></table>
+  </body>
+</html>
